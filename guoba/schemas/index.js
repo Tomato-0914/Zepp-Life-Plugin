@@ -5,10 +5,6 @@ import usersSchema from "./users.js";
 import lodash from "lodash";
 
 export const schemas = [
-  {
-    label: "Zepp Life 刷步设置",
-    component: "SOFT_GROUP_BEGIN",
-  },
   ...configSchema,
   ...usersSchema
 ];
