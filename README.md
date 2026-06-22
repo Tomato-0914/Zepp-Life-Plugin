@@ -20,11 +20,10 @@
 在您的 Yunzai 机器人根目录下，进入 `plugins` 文件夹并克隆本插件：
 
 ```bash
-git clone https://github.com/Tomato-0914/Zepp-Life-Plugin.git
+git clone https://github.com/Tomato-0914/Zepp-Life-Plugin.git ./plugins/Zepp-Life-Plugin
 ```
-
-本插件会自动检测缺失的依赖，并在主人发送更新指令时通过 `pnpm install` 自动补全。
-
+```
+pnpm install --filter=Zepp-Life-Plugin
 ---
 
 ## 常用命令一览
