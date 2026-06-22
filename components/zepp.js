@@ -1,11 +1,34 @@
 import axios from 'axios';
 import qs from 'qs';
+import crypto from 'crypto';
+
+const HM_AES_KEY = 'xeNtBVqzDc6tuNTh';
+const HM_AES_IV = 'MAAAYAAAAAAAAABg';
 
 class ZeppAPI {
+  static encryptData(plaintext) {
+    const cipher = crypto.createCipheriv('aes-128-cbc', Buffer.from(HM_AES_KEY), Buffer.from(HM_AES_IV));
+    let encrypted = cipher.update(plaintext, 'utf8');
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return encrypted;
+  }
+
+  static getRandomIP() {
+    const getByte = () => Math.floor(Math.random() * 255) + 1;
+    let first = getByte();
+    while ([0, 10, 127].includes(first) || (first >= 224 && first <= 255)) {
+      first = getByte();
+    }
+    return `${first}.${getByte()}.${getByte()}.${getByte()}`;
+  }
+
   static async requests(url, data = '', apptoken = '') {
+    const fakeIp = this.getRandomIP();
     const headers = {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-G9750 Build/LMY48Z)'
+      'User-Agent': 'MiFit6.14.0 (M2007J1SC; Android 12; Density/2.75)',
+      'X-Forwarded-For': fakeIp,
+      'Client-IP': fakeIp
     };
     if (apptoken) {
       headers['apptoken'] = apptoken;
@@ -20,36 +43,50 @@ class ZeppAPI {
       headers,
       data: bodyData,
       timeout: 15000,
-      validateStatus: () => true // Allow redirects or non-200 responses to be handled manually
+      validateStatus: () => true
     });
   }
 
   static async getAccessCode(username, password) {
-    // 华米登录接口
-    const url = `https://api-user.huami.com/registrations/${encodeURIComponent(username)}/tokens`;
-    const data = {
-      'phone_number': username,
+    const url = 'https://api-user.zepp.com/v2/registrations/tokens';
+    const loginData = {
+      'emailOrPhone': username,
       'password': password,
+      'state': 'REDIRECTION',
       'client_id': 'HuaMi',
+      'country_code': 'CN',
       'token': 'access',
-      'redirect_uri': 'https://s3-us-west-2.amazonaws.com/hm-registration/successsignin.html'
+      'redirect_uri': 'https://s3-us-west-2.amazonaws.com/hm-registration/successsignin.html',
     };
 
-    const res = await this.requests(url, data);
-    
-    // 如果响应是 302，说明是直接跳转，可以通过 headers 获取
-    let redirectUrl = res.headers.location || '';
-    
-    // 如果 Axios 自动处理了跳转，也可以从 request.res.responseUrl 中解析
-    if (!redirectUrl && res.request) {
-      const responseUrl = res.request.res?.responseUrl || res.request.responseURL || '';
-      if (responseUrl) {
-        redirectUrl = responseUrl;
-      }
-    }
+    const query = qs.stringify(loginData);
+    const cipherData = this.encryptData(query);
+    const fakeIp = this.getRandomIP();
 
+    const res = await axios({
+      url,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'User-Agent': 'MiFit6.14.0 (M2007J1SC; Android 12; Density/2.75)',
+        'app_name': 'com.xiaomi.hm.health',
+        'appname': 'com.xiaomi.hm.health',
+        'appplatform': 'android_phone',
+        'x-hm-ekv': '1',
+        'hm-privacy-ceip': 'false',
+        'X-Forwarded-For': fakeIp,
+        'Client-IP': fakeIp
+      },
+      data: cipherData,
+      maxRedirects: 0,
+      validateStatus: () => true
+    });
+
+    const redirectUrl = res.headers.location || '';
     if (!redirectUrl) {
-      throw new Error('未获取到华米登录重定向 URL，请检查账号密码是否正确');
+      const errCode = res.data?.code || res.status;
+      const errMsg = res.data?.message || '未知错误';
+      throw new Error(`华米登录验证不通过，状态: ${errCode}，原因: ${errMsg}`);
     }
 
     const match = redirectUrl.match(/access=(.*?)&/);
@@ -61,23 +98,47 @@ class ZeppAPI {
 
   static async getToken(username, accessCode) {
     const url = 'https://account.huami.com/v2/client/login';
+    const deviceId = crypto.randomUUID();
     const data = {
       'allow_registration': 'false',
       'app_name': 'com.xiaomi.hm.health',
-      'app_version': '6.3.5',
+      'app_version': '6.14.0',
       'code': accessCode,
       'country_code': 'CN',
-      'device_id': '2C8B4939-0CCD-4E94-8CBA-CB8EA6E613A1',
-      'device_model': 'phone',
-      'dn': 'api-user.huami.com,api-mifit.huami.com,app-analytics.huami.com',
+      'device_id': deviceId,
+      'device_model': 'android_phone',
+      'dn': 'account.zepp.com,api-user.zepp.com,api-mifit.zepp.com,api-watch.zepp.com,app-analytics.zepp.com,api-analytics.huami.com,auth.zepp.com',
       'grant_type': 'access_token',
       'lang': 'zh_CN',
       'os_version': '1.5.0',
-      'source': 'com.xiaomi.hm.health',
+      'source': 'com.xiaomi.hm.health:6.14.0:50818',
       'third_name': username.includes('@') ? 'email' : 'huami_phone',
     };
 
-    const res = await this.requests(url, data);
+    const headers = {
+      'app_name': 'com.xiaomi.hm.health',
+      'x-request-id': crypto.randomUUID(),
+      'accept-language': 'zh-CN',
+      'appname': 'com.xiaomi.hm.health',
+      'cv': '50818_6.14.0',
+      'v': '2.0',
+      'appplatform': 'android_phone',
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    };
+
+    const fakeIp = this.getRandomIP();
+    headers['X-Forwarded-For'] = fakeIp;
+    headers['Client-IP'] = fakeIp;
+
+    const res = await axios({
+      url,
+      method: 'POST',
+      headers,
+      data: qs.stringify(data),
+      timeout: 15000,
+      validateStatus: () => true
+    });
+
     const tokenInfo = res.data?.token_info;
     if (!tokenInfo || !tokenInfo.user_id || !tokenInfo.app_token) {
       const errMsg = res.data?.message || JSON.stringify(res.data);
