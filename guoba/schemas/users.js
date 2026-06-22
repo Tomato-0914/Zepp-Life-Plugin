@@ -15,9 +15,9 @@ export default [
           field: "qq",
           label: "QQ号",
           required: true,
-          component: "Input",
+          component: "GSelectFriend",
           componentProps: {
-            placeholder: "绑定用户的 QQ 号",
+            placeholder: "点击选择 QQ 号",
           },
         },
         {

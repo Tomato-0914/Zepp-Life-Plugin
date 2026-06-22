@@ -66,25 +66,55 @@ export class ZeppApp extends plugin {
       return true;
     }
 
-    const reg = /^#?(刷步数|修改步数)\s*(\d+)?/i;
+    const reg = /^#?(刷步数|修改步数)\s*(\d+)?$/i;
     const match = e.msg.match(reg);
-    let step = 0;
-
+    
     if (match && match[2]) {
-      step = parseInt(match[2]);
+      const step = parseInt(match[2]);
+      if (step <= 0 || step > 98000) {
+        await e.reply('❌ 修改步数失败，请输入 1 到 98,000 之间的有效数字。');
+        return true;
+      }
+      await this.executeStepModification(e, user, step, `正在同步修改步数为 ${step} 步，请稍候...`);
+      return true;
     } else {
-      // 未指定步数，随机生成
-      const minStep = ZeppConfig.get('minStep') || 18000;
-      const maxStep = ZeppConfig.get('maxStep') || 28000;
-      step = Math.floor(Math.random() * (maxStep - minStep + 1)) + minStep;
+      await e.reply('请输入步数...');
+      this.setContext('manualStepGetNumber');
+      return true;
     }
+  }
 
-    if (step <= 0 || step > 98000) {
-      await e.reply('❌ 修改步数失败，请输入 1 到 98,000 之间的有效数字。');
+  async manualStepGetNumber() {
+    const e = this.e;
+    const msg = e.msg ? e.msg.trim() : '';
+
+    if (msg === '取消') {
+      await e.reply('已取消修改步数。');
+      this.finish('manualStepGetNumber');
       return true;
     }
 
-    await e.reply(`🔄 正在同步修改步数为 ${step} 步，请稍候...`);
+    const step = parseInt(msg);
+    if (isNaN(step) || step <= 0 || step > 98000) {
+      await e.reply('❌ 输入错误。请输入 1 到 98,000 之间的有效数字，或回复“取消”退出当前操作：');
+      this.setContext('manualStepGetNumber');
+      return true;
+    }
+
+    this.finish('manualStepGetNumber');
+
+    const user = UserStore.getUser(e.user_id);
+    if (!user) {
+      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      return true;
+    }
+
+    await this.executeStepModification(e, user, step, `正在同步修改步数为 ${step} 步，请稍候...`);
+    return true;
+  }
+
+  async executeStepModification(e, user, step, waitingMsg) {
+    await e.reply(`🔄 ${waitingMsg}`);
 
     const res = await ZeppAPI.run(user.username, user.password, step);
     if (res.success) {
@@ -205,5 +235,48 @@ export class ZeppApp extends plugin {
       const delay = Math.floor(Math.random() * 7000) + 3000;
       await new Promise(resolve => setTimeout(resolve, delay));
     }
+  }
+}
+
+export class ZeppRandomStep extends plugin {
+  constructor() {
+    super({
+      name: 'Zepp-Life-随机刷步',
+      dsc: '小米运动/Zepp Life 随机刷步',
+      event: 'message',
+      priority: 1000,
+      rule: [
+        {
+          reg: /^#?随机刷步$/i,
+          fnc: 'randomStep'
+        }
+      ]
+    });
+  }
+
+  async randomStep(e) {
+    const user = UserStore.getUser(e.user_id);
+    if (!user) {
+      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#绑定刷步】进行绑定。');
+      return true;
+    }
+
+    const minStep = ZeppConfig.get('minStep') || 18000;
+    const maxStep = ZeppConfig.get('maxStep') || 28000;
+    const step = Math.floor(Math.random() * (maxStep - minStep + 1)) + minStep;
+
+    await e.reply(`🔄 正在同步随机步数为 ${step} 步，请稍候...`);
+
+    const res = await ZeppAPI.run(user.username, user.password, step);
+    if (res.success) {
+      UserStore.saveUser(e.user_id, {
+        lastStep: step,
+        lastTime: new Date().toLocaleString()
+      });
+      await e.reply(`✅ 步数修改成功！\n当前步数：${step}\n请打开微信运动或支付宝运动查看是否同步刷新喵~`);
+    } else {
+      await e.reply(`❌ 修改步数失败。\n原因：${res.error}`);
+    }
+    return true;
   }
 }
