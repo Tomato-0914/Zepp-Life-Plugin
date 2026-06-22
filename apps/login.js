@@ -95,14 +95,17 @@ export class ZeppLogin extends plugin {
 
     try {
       const accessCode = await ZeppAPI.getAccessCode(username, password);
-      await ZeppAPI.getToken(username, accessCode);
+      const tokenInfo = await ZeppAPI.getToken(username, accessCode);
 
-      // 保存绑定数据，默认关闭每日定时自动刷步数
+      // 保存绑定数据，并缓存 Token 避免首次刷步重复登录
       UserStore.saveUser(e.user_id, {
         username,
         password,
         autoStep: false,
-        time: '06:00'
+        time: '06:00',
+        appToken: tokenInfo.appToken,
+        userId: tokenInfo.userId,
+        tokenTime: Date.now()
       });
 
       await e.reply('✅ 验证通过，账号绑定成功！');
