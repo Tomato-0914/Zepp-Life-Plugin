@@ -28,8 +28,8 @@ body {
 
 /* Success theme */
 .container.success {
-  background: linear-gradient(135deg, #022c22 0%, #064e3b 50%, #022c22 100%);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: linear-gradient(135deg, #e0f7ff 0%, #b3e5fc 100%);
+  border: 1px solid rgba(6, 182, 212, 0.25);
 }
 
 /* Fail theme */
