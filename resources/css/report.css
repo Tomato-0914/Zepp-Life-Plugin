@@ -29,7 +29,7 @@ body {
 
 /* Success theme */
 .container.success {
-  background: linear-gradient(135deg, #dbe9f4 100%);
+  background: linear-gradient(135deg, #92d0ff 100%);
   border: 1px solid rgba(6, 182, 212, 0.25);
 }
 
@@ -60,7 +60,7 @@ body {
 .success .status-badge {
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #34d399;
+  color: #3dffb8;
 }
 
 .fail .status-badge {
@@ -76,7 +76,7 @@ body {
 }
 
 .success .title {
-  color: #0c4a6e;
+  color: #02a2ff;
 }
 
 .fail .title {
