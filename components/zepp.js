@@ -1,6 +1,7 @@
 import axios from 'axios';
 import qs from 'qs';
 import crypto from 'crypto';
+import ZeppConfig from './config.js';
 
 const HM_AES_KEY = 'xeNtBVqzDc6tuNTh';
 const HM_AES_IV = 'MAAAYAAAAAAAAABg';
@@ -48,7 +49,11 @@ class ZeppAPI {
   }
 
   static async getAccessCode(username, password) {
-    const url = 'https://api-user.zepp.com/v2/registrations/tokens';
+    let url = 'https://api-user.zepp.com/v2/registrations/tokens';
+    const apiProxy = ZeppConfig.get('apiProxy');
+    if (apiProxy) {
+      url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
+    }
     const loginData = {
       'emailOrPhone': username,
       'password': password,
@@ -115,7 +120,11 @@ class ZeppAPI {
   }
 
   static async getToken(username, accessCode) {
-    const url = 'https://account.huami.com/v2/client/login';
+    let url = 'https://account.huami.com/v2/client/login';
+    const apiProxy = ZeppConfig.get('apiProxy');
+    if (apiProxy) {
+      url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
+    }
     const deviceId = crypto.randomUUID();
     const data = {
       'allow_registration': 'false',
@@ -196,7 +205,11 @@ class ZeppAPI {
     const timestamp = Date.now();
     
     // 华米手环运动数据上传接口
-    const url = `https://api-mifit-cn2.huami.com/v1/data/band_data.json?t=${timestamp}`;
+    let url = `https://api-mifit-cn2.huami.com/v1/data/band_data.json?t=${timestamp}`;
+    const apiProxy = ZeppConfig.get('apiProxy');
+    if (apiProxy) {
+      url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
+    }
 
     // 根据步数估算距离和卡路里
     const dis = Math.round(step * 0.6); // 约 0.6 米/步
