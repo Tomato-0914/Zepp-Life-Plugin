@@ -61,39 +61,57 @@ class ZeppAPI {
 
     const query = qs.stringify(loginData);
     const cipherData = this.encryptData(query);
-    const fakeIp = this.getRandomIP();
 
-    const res = await axios({
-      url,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'User-Agent': 'MiFit6.14.0 (M2007J1SC; Android 12; Density/2.75)',
-        'app_name': 'com.xiaomi.hm.health',
-        'appname': 'com.xiaomi.hm.health',
-        'appplatform': 'android_phone',
-        'x-hm-ekv': '1',
-        'hm-privacy-ceip': 'false',
-        'X-Forwarded-For': fakeIp,
-        'Client-IP': fakeIp
-      },
-      data: cipherData,
-      maxRedirects: 0,
-      validateStatus: () => true
-    });
+    // 最多重试 3 次，指数退避应对 429 限流
+    const MAX_RETRY = 3;
+    for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+      const fakeIp = this.getRandomIP();
+      const res = await axios({
+        url,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'User-Agent': 'MiFit6.14.0 (M2007J1SC; Android 12; Density/2.75)',
+          'app_name': 'com.xiaomi.hm.health',
+          'appname': 'com.xiaomi.hm.health',
+          'appplatform': 'android_phone',
+          'x-hm-ekv': '1',
+          'hm-privacy-ceip': 'false',
+          'X-Forwarded-For': fakeIp,
+          'Client-IP': fakeIp
+        },
+        data: cipherData,
+        maxRedirects: 0,
+        validateStatus: () => true
+      });
 
-    const redirectUrl = res.headers.location || '';
-    if (!redirectUrl) {
-      const errCode = res.data?.code || res.status;
-      const errMsg = res.data?.message || '未知错误';
-      throw new Error(`华米登录验证不通过，状态: ${errCode}，原因: ${errMsg}`);
+      // 429：服务器频率限制，等待后重试
+      if (res.status === 429) {
+        const retryAfter = parseInt(res.headers['retry-after'] || '0', 10);
+        // 优先使用 Retry-After 头，否则指数退避（5s, 10s, 20s）
+        const waitMs = retryAfter > 0 ? retryAfter * 1000 : (5000 * Math.pow(2, attempt - 1));
+        logger.warn(`[Zepp-Life-Plugin] 登录接口被限流(429)，${waitMs / 1000}s 后重试(${attempt}/${MAX_RETRY})...`);
+        if (attempt < MAX_RETRY) {
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        }
+        throw new Error(`登录请求被华米服务器限流（429 Too Many Requests）。\n可能是短时间内尝试登录次数过多，请等待 5～10 分钟后再试。`);
+      }
+
+      const redirectUrl = res.headers.location || '';
+      if (!redirectUrl) {
+        const errCode = res.data?.code || res.status;
+        const errMsg = res.data?.message || '未知错误';
+        // 密码错误等情况直接抛出，不重试
+        throw new Error(`华米登录验证不通过，状态: ${errCode}，原因: ${errMsg}`);
+      }
+
+      const match = redirectUrl.match(/access=(.*?)&/);
+      if (!match) {
+        throw new Error('无法从登录响应中解析出 access code，请重试');
+      }
+      return match[1];
     }
-
-    const match = redirectUrl.match(/access=(.*?)&/);
-    if (!match) {
-      throw new Error('无法从登录响应中解析出 access code，请重试');
-    }
-    return match[1];
   }
 
   static async getToken(username, accessCode) {
@@ -115,41 +133,55 @@ class ZeppAPI {
       'third_name': username.includes('@') ? 'email' : 'huami_phone',
     };
 
-    const headers = {
-      'app_name': 'com.xiaomi.hm.health',
-      'x-request-id': crypto.randomUUID(),
-      'accept-language': 'zh-CN',
-      'appname': 'com.xiaomi.hm.health',
-      'cv': '50818_6.14.0',
-      'v': '2.0',
-      'appplatform': 'android_phone',
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-    };
+    const MAX_RETRY = 3;
+    for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+      const fakeIp = this.getRandomIP();
+      const headers = {
+        'app_name': 'com.xiaomi.hm.health',
+        'x-request-id': crypto.randomUUID(),
+        'accept-language': 'zh-CN',
+        'appname': 'com.xiaomi.hm.health',
+        'cv': '50818_6.14.0',
+        'v': '2.0',
+        'appplatform': 'android_phone',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Forwarded-For': fakeIp,
+        'Client-IP': fakeIp
+      };
 
-    const fakeIp = this.getRandomIP();
-    headers['X-Forwarded-For'] = fakeIp;
-    headers['Client-IP'] = fakeIp;
+      const res = await axios({
+        url,
+        method: 'POST',
+        headers,
+        data: qs.stringify(data),
+        timeout: 15000,
+        validateStatus: () => true
+      });
 
-    const res = await axios({
-      url,
-      method: 'POST',
-      headers,
-      data: qs.stringify(data),
-      timeout: 15000,
-      validateStatus: () => true
-    });
+      if (res.status === 429) {
+        const retryAfter = parseInt(res.headers['retry-after'] || '0', 10);
+        const waitMs = retryAfter > 0 ? retryAfter * 1000 : (5000 * Math.pow(2, attempt - 1));
+        logger.warn(`[Zepp-Life-Plugin] getToken 被限流(429)，${waitMs / 1000}s 后重试(${attempt}/${MAX_RETRY})...`);
+        if (attempt < MAX_RETRY) {
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        }
+        throw new Error(`获取 Token 时被服务器限流（429），请等待 5～10 分钟后再试。`);
+      }
 
-    const tokenInfo = res.data?.token_info;
-    if (!tokenInfo || !tokenInfo.user_id || !tokenInfo.app_token) {
-      const errMsg = res.data?.message || JSON.stringify(res.data);
-      throw new Error(`获取 App Token 失败: ${errMsg}`);
+      const tokenInfo = res.data?.token_info;
+      if (!tokenInfo || !tokenInfo.user_id || !tokenInfo.app_token) {
+        const errMsg = res.data?.message || JSON.stringify(res.data);
+        throw new Error(`获取 App Token 失败: ${errMsg}`);
+      }
+
+      return {
+        userId: tokenInfo.user_id,
+        appToken: tokenInfo.app_token
+      };
     }
-
-    return {
-      userId: tokenInfo.user_id,
-      appToken: tokenInfo.app_token
-    };
   }
+
 
   static async changeStep(userId, appToken, step) {
     const date = new Date();
