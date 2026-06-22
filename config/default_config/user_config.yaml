@@ -3,5 +3,6 @@
 qq: ""
 username: ""
 password: ""
-autoStep: true
+autoStep: false
 time: "06:00"
+step: 0

@@ -14,6 +14,39 @@ const getTimeString = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
+function validateStepParam(param) {
+  const p = param.trim();
+  if (p === '0') {
+    return { valid: true, value: 0 };
+  }
+
+  // 检查是否为范围如 15000-25000
+  const rangeMatch = p.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (rangeMatch) {
+    const min = parseInt(rangeMatch[1]);
+    const max = parseInt(rangeMatch[2]);
+    if (min < 0 || min > 98800 || max < 0 || max > 98800) {
+      return { valid: false, error: '输入错误，自动步数上下限均不能超过 98,800 步喵~' };
+    }
+    if (min > max) {
+      return { valid: false, error: '范围无效，最小值不能大于最大值喵~' };
+    }
+    return { valid: true, value: `${min}-${max}` };
+  }
+
+  // 检查是否为单个正整数
+  const singleMatch = p.match(/^(\d+)$/);
+  if (singleMatch) {
+    const val = parseInt(singleMatch[1]);
+    if (val < 0 || val > 98800) {
+      return { valid: false, error: '输入错误，步数数值需在 0 到 98,800 之间喵~' };
+    }
+    return { valid: true, value: val };
+  }
+
+  return { valid: false, error: '格式错误。请输入单个数字(如 20000)或步数范围(如 15000-25000)，输入 0 代表清除固定步数。' };
+}
+
 async function modifyStepBase(e, user, step, isRandom = false) {
   if (step > 98800) {
     await e.reply('❌ 修改步数失败，单次修改步数不能超过 98,800 步喵~');
@@ -68,6 +101,10 @@ export class ZeppApp extends plugin {
         {
           reg: /^#?设置自动刷步时间\s*(\d{1,2})[：:](\d{1,2})$/i,
           fnc: 'changeAutoTime'
+        },
+        {
+          reg: /^#?设置自动刷步(数|步数)\s*(.*)?$/i,
+          fnc: 'setAutoStepCount'
         }
       ]
     });
@@ -96,7 +133,17 @@ export class ZeppApp extends plugin {
       ? `开启 (每日 ${user.time || '06:00'})` 
       : '关闭';
 
-    await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 上次同步：${user.lastStep || '暂无'} 步 (${user.lastTime || '尚未同步'})\n\n💡 提示：您可以使用 【#设置自动刷步时间 07:30】 来修改自动刷步的时间。`);
+    let customStepText = '随机生成';
+    const userStepStr = String(user.step || '0').trim();
+    if (userStepStr && userStepStr !== '0') {
+      if (userStepStr.includes('-')) {
+        customStepText = `范围为 ${userStepStr} 步`;
+      } else {
+        customStepText = `固定为 ${userStepStr} 步`;
+      }
+    }
+
+    await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 自动步数：${customStepText}\n👟 上次同步：${user.lastStep || '暂无'} 步 (${user.lastTime || '尚未同步'})\n\n💡 提示：您可以使用 【#设置自动刷步时间 07:30】 来修改自动刷步时间，或使用 【#设置自动刷步数 15000-25000】 来设定每日的自动刷步固定步数或随机范围。`);
     return true;
   }
 
@@ -205,6 +252,77 @@ export class ZeppApp extends plugin {
     return true;
   }
 
+  // 5. 设置自动刷步数或范围
+  async setAutoStepCount(e) {
+    const user = UserStore.getUser(e.user_id);
+    if (!user) {
+      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      return true;
+    }
+
+    const reg = /^#?设置自动刷步(数|步数)\s*(.*)?$/i;
+    const match = e.msg.match(reg);
+    const rawParam = match && match[2] ? match[2].trim() : '';
+
+    if (rawParam) {
+      const res = validateStepParam(rawParam);
+      if (!res.valid) {
+        await e.reply(`❌ ${res.error}`);
+        return true;
+      }
+
+      UserStore.saveUser(e.user_id, { step: res.value });
+      if (res.value === 0) {
+        await e.reply(`✅ 已成功清除自动刷步数，此后自动刷步将使用全局随机范围。`);
+      } else if (typeof res.value === 'string') {
+        await e.reply(`✅ 已成功将每日自动刷步数范围设置为：【${res.value}】步。`);
+      } else {
+        await e.reply(`✅ 已成功将每日自动刷步数固定为每天【${res.value}】步。`);
+      }
+      return true;
+    } else {
+      await e.reply('请输入需要设置的自动刷步数。支持固定步数(如 20000)或随机步数范围(如 15000-25000)，输入 0 代表使用全局随机范围：');
+      this.setContext('setAutoStepCountGetParam');
+      return true;
+    }
+  }
+
+  async setAutoStepCountGetParam() {
+    const e = this.e;
+    const msg = e.msg ? e.msg.trim() : '';
+
+    if (msg === '取消') {
+      await e.reply('已取消自动刷步数设置。');
+      this.finish('setAutoStepCountGetParam');
+      return true;
+    }
+
+    const res = validateStepParam(msg);
+    if (!res.valid) {
+      await e.reply(`❌ ${res.error}\n\n请重新输入，或回复“取消”退出当前操作：`);
+      this.setContext('setAutoStepCountGetParam');
+      return true;
+    }
+
+    this.finish('setAutoStepCountGetParam');
+
+    const user = UserStore.getUser(e.user_id);
+    if (!user) {
+      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      return true;
+    }
+
+    UserStore.saveUser(e.user_id, { step: res.value });
+    if (res.value === 0) {
+      await e.reply(`✅ 已成功清除自动刷步数，此后自动刷步将使用全局随机范围。`);
+    } else if (typeof res.value === 'string') {
+      await e.reply(`✅ 已成功将每日自动刷步数范围设置为：【${res.value}】步。`);
+    } else {
+      await e.reply(`✅ 已成功将每日自动刷步数固定为每天【${res.value}】步。`);
+    }
+    return true;
+  }
+
   // 定时轮询检查逻辑
   async autoStepCheck() {
     const date = new Date();
@@ -223,17 +341,45 @@ export class ZeppApp extends plugin {
     const maxStep = ZeppConfig.get('maxStep') || 28000;
 
     for (const user of matchedUsers) {
-      // 自动生成的步数上限不能超过 98,800
-      let step = Math.floor(Math.random() * (maxStep - minStep + 1)) + minStep;
+      let step = 0;
+      const userStep = String(user.step || '0').trim();
+      if (userStep && userStep !== '0') {
+        if (userStep.includes('-')) {
+          const parts = userStep.split('-');
+          const uMin = parseInt(parts[0]);
+          const uMax = parseInt(parts[1]);
+          if (!isNaN(uMin) && !isNaN(uMax) && uMin <= uMax) {
+            step = Math.floor(Math.random() * (uMax - uMin + 1)) + uMin;
+          }
+        } else {
+          const fixedStep = parseInt(userStep);
+          if (!isNaN(fixedStep) && fixedStep > 0) {
+            step = fixedStep;
+          }
+        }
+      }
+
+      if (step <= 0) {
+        step = Math.floor(Math.random() * (maxStep - minStep + 1)) + minStep;
+      }
+      
       if (step > 98800) step = 98800;
 
-      // 如果当日已刷过步数且大于自动生成的步数，可适度加上一个小随机数或跳过以防止倒退
+      // 如果当日已刷过步数且大于要刷的步数，为防止同步倒退失败
       const todayStr = getTodayDateString();
       if (user.lastTime && user.lastTime.startsWith(todayStr)) {
         if (step <= user.lastStep) {
-          // 当前随机比今日已有小，为了不报失败，略微比今日已有多生成 100-1000 步
-          step = user.lastStep + Math.floor(Math.random() * 900) + 100;
-          if (step > 98800) step = 98800;
+          const hasCustomStep = userStep && userStep !== '0';
+          const isFixed = hasCustomStep && !userStep.includes('-');
+          if (isFixed) {
+            // 用户固定了步数，但小于或等于今日已刷步数，由于接口无法倒退，直接跳过此用户
+            logger.info(`[Zepp-Life-Plugin] 自动刷步跳过: QQ ${user.qq} 的固定步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}`);
+            continue;
+          } else {
+            // 随机步数或范围情况，自动生成一个略大的数以保证同步成功
+            step = user.lastStep + Math.floor(Math.random() * 900) + 100;
+            if (step > 98800) step = 98800;
+          }
         }
       }
 

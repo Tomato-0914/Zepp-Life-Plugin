@@ -16,6 +16,7 @@ export function getConfigData() {
     password: u.password || '',
     autoStep: u.autoStep !== false,
     time: u.time || '06:00',
+    step: u.step || 0,
     lastStep: u.lastStep || 0,
     lastTime: u.lastTime || ''
   }));
@@ -48,11 +49,23 @@ export function setConfigData(data, { Result }) {
       for (const u of users) {
         const qq = String(u.qq).trim();
         if (!qq) continue;
+
+        let stepVal = u.step;
+        if (typeof stepVal === 'string') {
+          stepVal = stepVal.trim();
+          if (/^\d+$/.test(stepVal)) {
+            stepVal = Number(stepVal);
+          }
+        } else if (typeof stepVal !== 'number') {
+          stepVal = 0;
+        }
+
         UserStore.saveUser(qq, {
           username: u.username || '',
           password: u.password || '',
           autoStep: u.autoStep !== false,
           time: u.time || '06:00',
+          step: stepVal,
           lastStep: u.lastStep || 0,
           lastTime: u.lastTime || ''
         });

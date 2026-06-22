@@ -50,6 +50,15 @@ export default [
           bottomHelpMessage: "每日自动执行步数的时间，格式为 HH:MM",
         },
         {
+          field: "step",
+          label: "自动刷步步数",
+          component: "Input",
+          componentProps: {
+            placeholder: "输入 0 恢复随机，支持固定数(如 20000)或范围(如 15000-25000)",
+          },
+          bottomHelpMessage: "自动刷步时自由选择步数。支持固定步数(如 20000)或范围格式(如 15000-25000)；输入 0 或留空使用全局随机范围。",
+        },
+        {
           field: "lastStep",
           label: "上次同步步数",
           component: "InputNumber",
