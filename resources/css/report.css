@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
 
 * {
   box-sizing: border-box;
@@ -7,105 +7,124 @@
 }
 
 body {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: transparent;
+  font-family: 'Outfit', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0b0f19; /* 统一暗黑背景 */
+  color: #f1f5f9;
   width: 580px;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 10px;
+  padding: 40px 20px;
 }
 
 .container {
   width: 100%;
-  border-radius: 16px;
-  /* 稍微减小圆角，更符合现代扁平化设计 */
-  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.08);
-  /* 极淡的蓝色阴影，显得轻盈 */
+  background: rgba(17, 24, 39, 0.75); /* 统一磨砂玻璃 */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   position: relative;
   overflow: hidden;
-  padding: 24px;
-  background: #ffffff;
-  color: #334155;
+  padding: 35px;
 }
 
-/* Success theme - 清爽浅蓝主题 */
-.container.success {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 1px solid #bae6fd;
+/* Success 主题背光源（薄荷绿/科技蓝） */
+.container.success::before {
+  content: '';
+  position: absolute;
+  top: -150px;
+  right: -150px;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.12) 0%, rgba(45, 212, 191, 0) 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Fail theme - 对应调整为清爽的浅红主题 */
-.container.fail {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  border: 1px solid #fecaca;
+/* Fail 主题背光源（赛博朋克红） */
+.container.fail::before {
+  content: '';
+  position: absolute;
+  top: -150px;
+  right: -150px;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.12) 0%, rgba(244, 63, 94, 0) 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .status-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: 0.5px;
 }
 
+/* 成功状态标题渐变（薄荷绿到蓝） */
 .success .title {
-  color: #0369a1;
-  /* 深邃一点的蓝色，保证标题可读性 */
+  background: linear-gradient(135deg, #2dd4bf 0%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
+/* 失败状态标题渐变（橙红到粉红） */
 .fail .title {
-  color: #b91c1c;
+  background: linear-gradient(135deg, #f97316 0%, #f43f5e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 6px 16px;
+  padding: 5px 14px;
   border-radius: 20px;
   letter-spacing: 0.5px;
 }
 
 .success .status-badge {
-  background: #d0f2ff;
-  /* 柔和的天蓝色背景 */
-  color: #0284c7;
-  /* 清晰的科技蓝文字 */
-  border: 1px solid #bae6fd;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  color: #38bdf8;
 }
 
 .fail .status-badge {
-  background: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  color: #fb7185;
 }
 
 .report-fields {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: #ffffff;
-  /* 数据区使用纯白，增加视觉呼吸感 */
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(2, 132, 199, 0.1);
+  background: rgba(30, 41, 59, 0.35); /* 数据区使用与第一段Item一致的半透明卡片 */
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .field-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed #e2e8f0;
-  /* 增加虚线分割，更显精致 */
+  padding-bottom: 14px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08); /* 适配暗色的虚线分割 */
 }
 
 .field-item:last-child {
@@ -115,50 +134,53 @@ body {
 
 .field-label {
   font-size: 14px;
-  color: #64748b;
+  color: #94a3b8; /* 统一副文本颜色 */
   font-weight: 400;
 }
 
 .field-value {
   font-size: 15px;
   font-weight: 600;
-  color: #0f172a;
+  color: #f8fafc;
 }
 
 .success .field-value.highlight {
-  color: #0284c7;
-  /* 步数高亮使用主色调蓝 */
-  font-size: 20px;
+  color: #2dd4bf; /* 步数高亮使用薄荷绿 */
+  font-size: 22px;
   font-weight: 800;
 }
 
 .fail .field-value.highlight {
-  color: #dc2626;
-  font-size: 20px;
+  color: #f43f5e; /* 失败高亮使用赛博粉红 */
+  font-size: 22px;
   font-weight: 800;
 }
 
 .error-box {
-  margin-top: 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
-  padding: 12px 16px;
+  position: relative;
+  z-index: 1;
+  margin-top: 18px;
+  background: rgba(244, 63, 94, 0.06);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  border-radius: 12px;
+  padding: 14px 18px;
   font-size: 13px;
-  color: #991b1b;
-  line-height: 1.5;
+  color: #fda4af;
+  line-height: 1.6;
 }
 
 .error-title {
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  color: #f43f5e;
 }
 
 .footer {
+  position: relative;
+  z-index: 1;
   text-align: center;
-  margin-top: 20px;
-  color: #94a3b8;
-  /* 页脚文字改浅，不喧宾夺主 */
+  margin-top: 25px;
+  color: #64748b;
   font-size: 12px;
-  font-weight: 300;
+  font-weight: 400;
 }
