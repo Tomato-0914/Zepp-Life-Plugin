@@ -23,12 +23,12 @@ body {
   position: relative;
   overflow: hidden;
   padding: 25px;
-  color: #f8fafc;
+  color: #111827; /* dark text for contrast */
 }
 
 /* Success theme */
 .container.success {
-  background: linear-gradient(135deg, #e0f7ff 0%, #b3e5fc 100%);
+  background: linear-gradient(135deg, #f0f9ff 0%, #dbe9f4 100%);
   border: 1px solid rgba(6, 182, 212, 0.25);
 }
 
@@ -75,7 +75,7 @@ body {
 }
 
 .success .title {
-  color: #6ee7b7;
+  color: #0c4a6e;
 }
 
 .fail .title {
@@ -86,10 +86,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.8);
   border-radius: 12px;
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .field-item {
@@ -100,17 +100,17 @@ body {
 
 .field-label {
   font-size: 13px;
-  color: #94a3b8;
+  color: #374151;
 }
 
 .field-value {
   font-size: 15px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #111827;
 }
 
 .success .field-value.highlight {
-  color: #34d399;
+  color: #0c4a6e;
   font-size: 18px;
 }
 
