@@ -2,6 +2,14 @@ import plugin from '../../../lib/plugins/plugin.js';
 import ZeppConfig from '../components/config.js';
 import { UserStore } from '../components/userStore.js';
 import ZeppAPI from '../components/zepp.js';
+import fs from 'fs';
+import path from 'path';
+import puppeteer from '../../../lib/puppeteer/puppeteer.js';
+import { getPluginRoot } from '../components/config.js';
+
+const PLUGIN_ROOT = getPluginRoot();
+const packageJson = JSON.parse(fs.readFileSync(path.join(PLUGIN_ROOT, 'package.json'), 'utf8'));
+const version = packageJson.version;
 
 const getTodayDateString = () => {
   const d = new Date();
