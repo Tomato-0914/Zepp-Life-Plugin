@@ -33,11 +33,15 @@ export class ZeppHelp extends plugin {
     }
 
     try {
+      const pluginName = path.basename(PLUGIN_ROOT);
+      const plgPath = `${process.cwd().replace(/\\/g, '/')}/plugins/${pluginName}`;
+
       const img = await puppeteer.screenshot('zepp-life-help', {
         tplFile: htmlPath,
         type: 'jpeg',
         quality: 90,
         version: version,
+        plgPath: plgPath,
       });
 
       if (img) {
