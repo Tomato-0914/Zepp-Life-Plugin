@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
 
 * {
   box-sizing: border-box;
@@ -7,9 +7,9 @@
 }
 
 body {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-  color: #f8fafc;
+  font-family: 'Outfit', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0b0f19; /* 统一为第一段的极简深色背景 */
+  color: #f1f5f9;
   width: 750px;
   min-height: 1000px;
   display: flex;
@@ -20,37 +20,40 @@ body {
 
 .container {
   width: 100%;
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  padding: 30px;
+  background: rgba(17, 24, 39, 0.75); /* 统一为深色磨砂玻璃底色 */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px; /* 统一圆角 */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  padding: 45px 35px;
   position: relative;
   overflow: hidden;
 }
 
+/* 渐变氛围光源 - 替换为第一段的青蓝光源 */
 .container::before {
   content: '';
   position: absolute;
-  top: -10%;
-  right: -10%;
-  width: 250px;
-  height: 250px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0) 70%);
+  top: -150px;
+  right: -150px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.1) 0%, rgba(45, 212, 191, 0) 70%);
   z-index: 0;
+  pointer-events: none;
 }
 
 .container::after {
   content: '';
   position: absolute;
-  bottom: -10%;
-  left: -10%;
-  width: 250px;
-  height: 250px;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(168, 85, 247, 0) 70%);
+  bottom: -150px;
+  left: -150px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 70%);
   z-index: 0;
+  pointer-events: none;
 }
 
 .header {
@@ -58,53 +61,54 @@ body {
   z-index: 1;
   text-align: center;
   margin-bottom: 40px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 25px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 30px;
 }
 
 .header h1 {
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 800;
-  background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+  background: linear-gradient(135deg, #2dd4bf 0%, #0ea5e9 50%, #3b82f6 100%); /* 统一为青蓝渐变 */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   letter-spacing: 1px;
 }
 
 .header p {
   color: #94a3b8;
   font-size: 15px;
-  font-weight: 300;
+  font-weight: 400;
+  letter-spacing: 0.5px;
 }
 
 .group-box {
   position: relative;
   z-index: 1;
-  margin-bottom: 30px;
+  margin-bottom: 35px;
 }
 
 .group-title {
   font-size: 18px;
-  font-weight: 600;
-  color: #818cf8;
-  margin-bottom: 15px;
-  padding-left: 10px;
-  border-left: 4px solid #6366f1;
+  font-weight: 700;
+  color: #38bdf8; /* 清爽青蓝色 */
+  margin-bottom: 20px;
+  padding-left: 12px;
+  border-left: 4px solid #0ea5e9;
   letter-spacing: 0.5px;
 }
 
 .command-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .command-item {
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(30, 41, 59, 0.35); /* 半透明悬浮卡片 */
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 16px;
-  padding: 16px 20px;
+  padding: 20px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -113,29 +117,33 @@ body {
 .command-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
 }
 
 .command-name {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #f8fafc;
+  letter-spacing: 0.3px;
 }
 
 .command-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: #94a3b8;
+  line-height: 1.6;
 }
 
 .command-badge {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  color: #c7d2fe;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  color: #38bdf8;
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 20px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .footer {
@@ -145,11 +153,11 @@ body {
   margin-top: 50px;
   color: #64748b;
   font-size: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 25px;
 }
 
 .footer span {
-  color: #a855f7;
+  color: #0ea5e9;
   font-weight: 600;
 }
