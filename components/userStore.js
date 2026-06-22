@@ -1,62 +1,78 @@
 import fs from 'fs';
 import path from 'path';
 import { getPluginRoot } from './config.js';
+import YAML from 'yaml';
 
-const usersFile = path.join(getPluginRoot(), 'data', 'users.json');
-
-const readJson = () => {
-  if (!fs.existsSync(usersFile)) {
-    return {};
-  }
-  try {
-    return JSON.parse(fs.readFileSync(usersFile, 'utf8')) || {};
-  } catch (err) {
-    logger.error(`[Zepp-Life-Plugin] 读取用户数据库失败:`, err);
-    return {};
-  }
-};
-
-const writeJson = (data) => {
-  try {
-    fs.mkdirSync(path.dirname(usersFile), { recursive: true });
-    fs.writeFileSync(usersFile, JSON.stringify(data, null, 2), 'utf8');
-  } catch (err) {
-    logger.error(`[Zepp-Life-Plugin] 写入用户数据库失败:`, err);
-  }
-};
+const dataDir = path.join(getPluginRoot(), 'data');
 
 export class UserStore {
-  static getUser(userId) {
-    const data = readJson();
-    return data[userId] || null;
+  static getFilePath(qq) {
+    return path.join(dataDir, `${qq}.yaml`);
   }
 
-  static saveUser(userId, userData) {
-    const data = readJson();
-    data[userId] = {
-      ...data[userId],
-      ...userData,
-      updatedAt: new Date().toISOString()
-    };
-    writeJson(data);
-    return true;
+  static getUser(qq) {
+    const filePath = this.getFilePath(qq);
+    if (!fs.existsSync(filePath)) return null;
+    try {
+      return YAML.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (err) {
+      logger.error(`[Zepp-Life-Plugin] 读取用户 ${qq} 配置失败:`, err);
+      return null;
+    }
   }
 
-  static deleteUser(userId) {
-    const data = readJson();
-    if (data[userId]) {
-      delete data[userId];
-      writeJson(data);
+  static saveUser(qq, data) {
+    const filePath = this.getFilePath(qq);
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      const existing = this.getUser(qq) || {};
+      const merged = {
+        qq: String(qq),
+        username: data.username || existing.username || '',
+        password: data.password || existing.password || '',
+        autoStep: data.autoStep !== undefined ? data.autoStep : (existing.autoStep !== undefined ? existing.autoStep : true),
+        time: data.time || existing.time || '06:00',
+        lastStep: data.lastStep !== undefined ? data.lastStep : (existing.lastStep || 0),
+        lastTime: data.lastTime || existing.lastTime || ''
+      };
+      fs.writeFileSync(filePath, YAML.stringify(merged), 'utf8');
       return true;
+    } catch (err) {
+      logger.error(`[Zepp-Life-Plugin] 保存用户 ${qq} 配置失败:`, err);
+      return false;
+    }
+  }
+
+  static deleteUser(qq) {
+    const filePath = this.getFilePath(qq);
+    if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+        return true;
+      } catch (err) {
+        logger.error(`[Zepp-Life-Plugin] 删除用户 ${qq} 配置失败:`, err);
+        return false;
+      }
     }
     return false;
   }
 
   static getAllUsers() {
-    const data = readJson();
-    return Object.entries(data).map(([userId, val]) => ({
-      userId,
-      ...val
-    }));
+    if (!fs.existsSync(dataDir)) return [];
+    try {
+      const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.yaml'));
+      return files.map(file => {
+        const filePath = path.join(dataDir, file);
+        try {
+          return YAML.parse(fs.readFileSync(filePath, 'utf8'));
+        } catch (err) {
+          logger.error(`[Zepp-Life-Plugin] 读取用户文件 ${file} 失败:`, err);
+          return null;
+        }
+      }).filter(u => u !== null);
+    } catch (err) {
+      logger.error('[Zepp-Life-Plugin] 获取所有用户失败:', err);
+      return [];
+    }
   }
 }
