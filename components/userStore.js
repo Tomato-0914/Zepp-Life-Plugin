@@ -30,7 +30,7 @@ export class UserStore {
         qq: String(qq),
         username: data.username || existing.username || '',
         password: data.password || existing.password || '',
-        autoStep: data.autoStep !== undefined ? data.autoStep : (existing.autoStep !== undefined ? existing.autoStep : true),
+        autoStep: data.autoStep !== undefined ? data.autoStep : (existing.autoStep !== undefined ? existing.autoStep : false),
         time: data.time || existing.time || '06:00',
         lastStep: data.lastStep !== undefined ? data.lastStep : (existing.lastStep || 0),
         lastTime: data.lastTime || existing.lastTime || ''

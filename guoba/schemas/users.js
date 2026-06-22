@@ -1,9 +1,5 @@
 export default [
   {
-    label: "用户绑定列表",
-    component: "SOFT_GROUP_BEGIN",
-  },
-  {
     field: "usersData.users",
     label: "用户列表",
     bottomHelpMessage: "管理所有绑定的 Zepp Life 账号。您可以在此修改、新增或删除用户。保存后将自动更新本地 data 目录下的 {qq}.yaml 文件。",

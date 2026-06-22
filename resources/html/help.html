@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Zepp Life 刷步助手帮助</title>
+  <link rel="stylesheet" href="../css/help.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Zepp Life 刷步助手</h1>
+      <p>小米运动 / Zepp Life 自动与手动刷步命令指南</p>
+    </div>
+
+    <!-- 1. 账号绑定 -->
+    <div class="group-box">
+      <div class="group-title">账号管理</div>
+      <div class="command-list">
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#zepp绑定 / #刷步绑定</div>
+            <div class="command-desc">启动引导式会话，绑定您的 Zepp Life 账号和密码（限制私聊）</div>
+          </div>
+          <span class="command-badge">用户</span>
+        </div>
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#zepp解绑 / #刷步解绑</div>
+            <div class="command-desc">解绑并清除本地绑定数据，进行安全二次确认</div>
+          </div>
+          <span class="command-badge">用户</span>
+        </div>
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#我的步数 / #查看步数</div>
+            <div class="command-desc">查看绑定账号、自动刷步时间、上次同步的步数及日期</div>
+          </div>
+          <span class="command-badge">用户</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 刷步命令 -->
+    <div class="group-box">
+      <div class="group-title">刷步修改</div>
+      <div class="command-list">
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#刷步 [步数] / #修改步数 [步数]</div>
+            <div class="command-desc">同步修改步数（若不指定步数，则进入输入引导会话，步数需小于 98,800）</div>
+          </div>
+          <span class="command-badge">用户</span>
+        </div>
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#随机刷步</div>
+            <div class="command-desc">在全局上下限配置范围内，随机生成步数并执行同步修改</div>
+          </div>
+          <span class="command-badge">用户</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 定时自动 -->
+    <div class="group-box">
+      <div class="group-title">自动刷步（默认关闭）</div>
+      <div class="command-list">
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#自动刷步 [开启/关闭]</div>
+            <div class="command-desc">开启或关闭您本人的每日定时自动刷步任务（留空自动切换开关状态）</div>
+          </div>
+          <span class="command-badge">用户</span>
+        </div>
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#设置自动刷步时间 [时:分]</div>
+            <div class="command-desc">修改您自动刷步的每日执行时间（格式为 HH:MM，如 07:30）</div>
+          </div>
+          <span class="command-badge">用户</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 系统管理 -->
+    <div class="group-box">
+      <div class="group-title">系统与帮助</div>
+      <div class="command-list">
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#zepp帮助 / #刷步帮助</div>
+            <div class="command-desc">获取本张精美的图片帮助指南卡片</div>
+          </div>
+          <span class="command-badge">系统</span>
+        </div>
+        <div class="command-item">
+          <div class="command-info">
+            <div class="command-name">#刷步更新 / #zepp更新 / #zepplife更新</div>
+            <div class="command-desc">自动拉取最新代码并升级依赖，最后重启机器人（限主人）</div>
+          </div>
+          <span class="command-badge">主人</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Created By <span>Antigravity</span> | Zepp-Life-Plugin v{{version}}
+    </div>
+  </div>
+</body>
+</html>

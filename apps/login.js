@@ -13,11 +13,11 @@ export class ZeppLogin extends plugin {
       priority: 999,
       rule: [
         {
-          reg: /^#?(我绑定|绑定步数|绑定刷步)$/i,
+          reg: /^#?(zepp|刷步)绑定$/i,
           fnc: 'bindAccount'
         },
         {
-          reg: /^#?(我解绑|解绑步数|解绑刷步)/i,
+          reg: /^#?(zepp|刷步)解绑/i,
           fnc: 'unbindAccount'
         }
       ]
@@ -97,11 +97,11 @@ export class ZeppLogin extends plugin {
       const accessCode = await ZeppAPI.getAccessCode(username, password);
       await ZeppAPI.getToken(username, accessCode);
 
-      // 保存绑定数据，默认开启每日定时自动刷步数
+      // 保存绑定数据，默认关闭每日定时自动刷步数
       UserStore.saveUser(e.user_id, {
         username,
         password,
-        autoStep: true,
+        autoStep: false,
         time: '06:00'
       });
 

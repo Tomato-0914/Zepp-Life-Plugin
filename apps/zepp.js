@@ -3,6 +3,48 @@ import ZeppConfig from '../components/config.js';
 import { UserStore } from '../components/userStore.js';
 import ZeppAPI from '../components/zepp.js';
 
+const getTodayDateString = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const getTimeString = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
+
+async function modifyStepBase(e, user, step, isRandom = false) {
+  if (step > 98800) {
+    await e.reply('❌ 修改步数失败，单次修改步数不能超过 98,800 步喵~');
+    return true;
+  }
+
+  const todayStr = getTodayDateString();
+  if (user.lastTime && user.lastTime.startsWith(todayStr)) {
+    if (step <= user.lastStep) {
+      await e.reply(`❌ 修改步数失败。\n提示：今日已同步步数为 ${user.lastStep} 步，新修改的步数不能小于或等于今日已同步的步数喵~`);
+      return true;
+    }
+  }
+
+  const msgType = isRandom ? '随机步数' : '修改步数';
+  await e.reply(`🔄 正在同步${msgType}为 ${step} 步，请稍候...`);
+
+  const res = await ZeppAPI.run(user.username, user.password, step);
+  if (res.success) {
+    const nowTimeStr = getTimeString();
+    UserStore.saveUser(e.user_id, {
+      lastStep: step,
+      lastTime: nowTimeStr
+    });
+    await e.reply(`✅ 步数修改成功！\n当前步数：${step}\n请打开微信运动或支付宝运动查看是否同步刷新喵~`);
+  } else {
+    await e.reply(`❌ 修改步数失败。\n原因：${res.error}`);
+  }
+  return true;
+}
+
 export class ZeppApp extends plugin {
   constructor() {
     super({
@@ -16,15 +58,15 @@ export class ZeppApp extends plugin {
           fnc: 'viewStatus'
         },
         {
-          reg: /^#?(刷步数|修改步数)\s*(\d+)?/i,
+          reg: /^#?(刷步|修改步数)\s*(\d+)?/i,
           fnc: 'manualStep'
         },
         {
-          reg: /^#?自动刷步数\s*(开启|开启自动|开|关闭|关闭自动|关)?$/i,
+          reg: /^#?自动刷步\s*(开启|关闭|)?$/i,
           fnc: 'toggleAutoStep'
         },
         {
-          reg: /^#?自动刷步时间\s*(\d{1,2})[：:](\d{1,2})$/i,
+          reg: /^#?设置自动刷步时间\s*(\d{1,2})[：:](\d{1,2})$/i,
           fnc: 'changeAutoTime'
         }
       ]
@@ -42,7 +84,7 @@ export class ZeppApp extends plugin {
   async viewStatus(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#绑定刷步】进行绑定。');
+      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -54,7 +96,7 @@ export class ZeppApp extends plugin {
       ? `开启 (每日 ${user.time || '06:00'})` 
       : '关闭';
 
-    await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 上次同步：${user.lastStep || '暂无'} 步 (${user.lastTime || '尚未同步'})\n\n💡 提示：您可以使用 【#自动刷步时间 07:30】 来修改自动刷步的时间。`);
+    await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 上次同步：${user.lastStep || '暂无'} 步 (${user.lastTime || '尚未同步'})\n\n💡 提示：您可以使用 【#设置自动刷步时间 07:30】 来修改自动刷步的时间。`);
     return true;
   }
 
@@ -62,20 +104,16 @@ export class ZeppApp extends plugin {
   async manualStep(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#绑定刷步】进行绑定。');
+      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
-    const reg = /^#?(刷步数|修改步数)\s*(\d+)?$/i;
+    const reg = /^#?(刷步|修改步数)\s*(\d+)?/i;
     const match = e.msg.match(reg);
     
     if (match && match[2]) {
       const step = parseInt(match[2]);
-      if (step <= 0 || step > 98000) {
-        await e.reply('❌ 修改步数失败，请输入 1 到 98,000 之间的有效数字。');
-        return true;
-      }
-      await this.executeStepModification(e, user, step, `正在同步修改步数为 ${step} 步，请稍候...`);
+      await modifyStepBase(e, user, step, false);
       return true;
     } else {
       await e.reply('请输入步数...');
@@ -95,8 +133,8 @@ export class ZeppApp extends plugin {
     }
 
     const step = parseInt(msg);
-    if (isNaN(step) || step <= 0 || step > 98000) {
-      await e.reply('❌ 输入错误。请输入 1 到 98,000 之间的有效数字，或回复“取消”退出当前操作：');
+    if (isNaN(step) || step <= 0) {
+      await e.reply('❌ 输入错误。请输入大于 0 的有效数字，或回复“取消”退出当前操作：');
       this.setContext('manualStepGetNumber');
       return true;
     }
@@ -109,23 +147,7 @@ export class ZeppApp extends plugin {
       return true;
     }
 
-    await this.executeStepModification(e, user, step, `正在同步修改步数为 ${step} 步，请稍候...`);
-    return true;
-  }
-
-  async executeStepModification(e, user, step, waitingMsg) {
-    await e.reply(`🔄 ${waitingMsg}`);
-
-    const res = await ZeppAPI.run(user.username, user.password, step);
-    if (res.success) {
-      UserStore.saveUser(e.user_id, {
-        lastStep: step,
-        lastTime: new Date().toLocaleString()
-      });
-      await e.reply(`✅ 步数修改成功！\n当前步数：${step}\n请打开微信运动或支付宝运动查看是否同步刷新喵~`);
-    } else {
-      await e.reply(`❌ 修改步数失败。\n原因：${res.error}`);
-    }
+    await modifyStepBase(e, user, step, false);
     return true;
   }
 
@@ -137,13 +159,13 @@ export class ZeppApp extends plugin {
       return true;
     }
 
-    const reg = /^#?自动刷步数\s*(开启|开启自动|开|关闭|关闭自动|关)?$/i;
+    const reg = /^#?自动刷步\s*(开启|关闭|)?$/i;
     const match = e.msg.match(reg);
     let auto = true;
 
     if (match && match[1]) {
-      const mode = match[1];
-      if (['关闭', '关闭自动', '关'].includes(mode)) {
+      const mode = match[1].trim();
+      if (mode === '关闭') {
         auto = false;
       }
     } else {
@@ -163,7 +185,7 @@ export class ZeppApp extends plugin {
       return true;
     }
 
-    const reg = /^#?自动刷步时间\s*(\d{1,2})[：:](\d{1,2})$/i;
+    const reg = /^#?设置自动刷步时间\s*(\d{1,2})[：:](\d{1,2})$/i;
     const match = e.msg.match(reg);
     if (!match) return false;
 
@@ -201,20 +223,33 @@ export class ZeppApp extends plugin {
     const maxStep = ZeppConfig.get('maxStep') || 28000;
 
     for (const user of matchedUsers) {
-      const step = Math.floor(Math.random() * (maxStep - minStep + 1)) + minStep;
+      // 自动生成的步数上限不能超过 98,800
+      let step = Math.floor(Math.random() * (maxStep - minStep + 1)) + minStep;
+      if (step > 98800) step = 98800;
+
+      // 如果当日已刷过步数且大于自动生成的步数，可适度加上一个小随机数或跳过以防止倒退
+      const todayStr = getTodayDateString();
+      if (user.lastTime && user.lastTime.startsWith(todayStr)) {
+        if (step <= user.lastStep) {
+          // 当前随机比今日已有小，为了不报失败，略微比今日已有多生成 100-1000 步
+          step = user.lastStep + Math.floor(Math.random() * 900) + 100;
+          if (step > 98800) step = 98800;
+        }
+      }
+
       logger.info(`[Zepp-Life-Plugin] 自动刷步：正在同步 QQ ${user.qq} -> ${step} 步`);
 
       const res = await ZeppAPI.run(user.username, user.password, step);
       if (res.success) {
         UserStore.saveUser(user.qq, {
           lastStep: step,
-          lastTime: new Date().toLocaleString()
+          lastTime: getTimeString()
         });
         logger.info(`[Zepp-Life-Plugin] 自动刷步成功: QQ ${user.qq} -> ${step} 步`);
         
         try {
           if (typeof Bot !== 'undefined') {
-            await Bot.pickUser(Number(user.qq)).sendMsg(`[Zepp-Life-Plugin] 每日自动刷步已执行成功！\n步数：${step} 步\n时间：${new Date().toLocaleString()}`);
+            await Bot.pickUser(Number(user.qq)).sendMsg(`[Zepp-Life-Plugin] 每日自动刷步已执行成功！\n步数：${step} 步\n时间：${getTimeString()}`);
           }
         } catch (err) {
           logger.warn(`[Zepp-Life-Plugin] 自动刷步成功通知发送失败: ${err.message}`);
@@ -257,7 +292,7 @@ export class ZeppRandomStep extends plugin {
   async randomStep(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#绑定刷步】进行绑定。');
+      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -265,18 +300,7 @@ export class ZeppRandomStep extends plugin {
     const maxStep = ZeppConfig.get('maxStep') || 28000;
     const step = Math.floor(Math.random() * (maxStep - minStep + 1)) + minStep;
 
-    await e.reply(`🔄 正在同步随机步数为 ${step} 步，请稍候...`);
-
-    const res = await ZeppAPI.run(user.username, user.password, step);
-    if (res.success) {
-      UserStore.saveUser(e.user_id, {
-        lastStep: step,
-        lastTime: new Date().toLocaleString()
-      });
-      await e.reply(`✅ 步数修改成功！\n当前步数：${step}\n请打开微信运动或支付宝运动查看是否同步刷新喵~`);
-    } else {
-      await e.reply(`❌ 修改步数失败。\n原因：${res.error}`);
-    }
+    await modifyStepBase(e, user, step, true);
     return true;
   }
 }

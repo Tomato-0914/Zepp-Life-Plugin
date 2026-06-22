@@ -30,7 +30,7 @@ export class ZeppUpdate extends plugin {
       priority: -Infinity,
       rule: [
         {
-          reg: /^#?(步数|zepp|ZeppLife|zepplife)更新$/i,
+          reg: /^#?(刷步|zepp|zepplife)更新$/i,
           fnc: 'doUpdate'
         }
       ]
