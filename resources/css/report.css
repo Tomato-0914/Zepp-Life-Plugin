@@ -23,12 +23,13 @@ body {
   position: relative;
   overflow: hidden;
   padding: 25px;
-  color: #111827; /* dark text for contrast */
+  color: #111827;
+  /* dark text for contrast */
 }
 
 /* Success theme */
 .container.success {
-  background: linear-gradient(135deg, #f0f9ff 0%, #dbe9f4 100%);
+  background: linear-gradient(135deg, #dbe9f4 100%);
   border: 1px solid rgba(6, 182, 212, 0.25);
 }
 
