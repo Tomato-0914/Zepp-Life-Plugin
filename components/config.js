@@ -4,6 +4,16 @@ import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import lodash from 'lodash';
 
+// 确保在独立测试或非 Yunzai 环境下运行不会因缺少 logger 而报错
+if (typeof global.logger === 'undefined') {
+  global.logger = {
+    info: (...args) => console.log('[INFO]', ...args),
+    error: (...args) => console.error('[ERROR]', ...args),
+    warn: (...args) => console.warn('[WARN]', ...args),
+    mark: (...args) => console.log('[MARK]', ...args),
+  };
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PLUGIN_ROOT = path.resolve(__dirname, '../');
