@@ -47,4 +47,4 @@ git clone https://github.com/Tomato-0914/Zepp-Life-Plugin.git
 
 |名称||
 |-|-|
-|Antigravity|核心编辑|
+|[Antigravity](https://antigravity.google/download)|核心编辑|
