@@ -247,14 +247,65 @@ class ZeppAPI {
     }
   }
 
-  static async run(username, password, step) {
+  /**
+   * Token 有效期：23 小时（华米 Token 通常 30 天有效，保守设为 23h 避免长期不刷步时的过期）
+   * 每次刷步优先复用缓存 Token，失败(401/403)后自动重新登录
+   * @param {string} username
+   * @param {string} password
+   * @param {number} step
+   * @param {object|null} cachedToken - { appToken, userId, tokenTime } from UserStore
+   * @returns {{ success, steps, newToken }}
+   */
+  static async run(username, password, step, cachedToken = null) {
+    // Token 缓存有效期 23 小时（毫秒）
+    const TOKEN_TTL_MS = 23 * 60 * 60 * 1000;
+
+    let appToken = cachedToken?.appToken;
+    let userId = cachedToken?.userId;
+    const tokenTime = cachedToken?.tokenTime || 0;
+    const tokenExpired = !appToken || !userId || (Date.now() - tokenTime > TOKEN_TTL_MS);
+
+    // 需要重新登录的情况：Token 不存在或已过期
+    if (tokenExpired) {
+      try {
+        logger.info(`[Zepp-Life-Plugin] Token 不存在或已过期，重新登录: ${username}`);
+        const accessCode = await this.getAccessCode(username, password);
+        const tokenInfo = await this.getToken(username, accessCode);
+        appToken = tokenInfo.appToken;
+        userId = tokenInfo.userId;
+      } catch (err) {
+        return { success: false, error: `登录失败: ${err.message}`, newToken: null };
+      }
+    }
+
     try {
-      const accessCode = await this.getAccessCode(username, password);
-      const token = await this.getToken(username, accessCode);
-      const result = await this.changeStep(token.userId, token.appToken, step);
-      return { success: true, steps: step };
+      await this.changeStep(userId, appToken, step);
+      // 返回新 Token 供调用方缓存
+      return {
+        success: true,
+        steps: step,
+        newToken: { appToken, userId, tokenTime: tokenExpired ? Date.now() : tokenTime }
+      };
     } catch (err) {
-      return { success: false, error: err.message };
+      // Token 可能失效，尝试强制重新登录一次
+      if (!tokenExpired) {
+        logger.warn(`[Zepp-Life-Plugin] 使用缓存 Token 失败，尝试重新登录: ${err.message}`);
+        try {
+          const accessCode = await this.getAccessCode(username, password);
+          const tokenInfo = await this.getToken(username, accessCode);
+          appToken = tokenInfo.appToken;
+          userId = tokenInfo.userId;
+          await this.changeStep(userId, appToken, step);
+          return {
+            success: true,
+            steps: step,
+            newToken: { appToken, userId, tokenTime: Date.now() }
+          };
+        } catch (retryErr) {
+          return { success: false, error: retryErr.message, newToken: null };
+        }
+      }
+      return { success: false, error: err.message, newToken: null };
     }
   }
 }

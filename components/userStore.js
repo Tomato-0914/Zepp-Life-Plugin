@@ -36,7 +36,11 @@ export class UserStore {
         pushGroups: data.pushGroups !== undefined ? data.pushGroups : (existing.pushGroups || []),
         pushFriends: data.pushFriends !== undefined ? data.pushFriends : (existing.pushFriends || []),
         lastStep: data.lastStep !== undefined ? data.lastStep : (existing.lastStep || 0),
-        lastTime: data.lastTime || existing.lastTime || ''
+        lastTime: data.lastTime || existing.lastTime || '',
+        // 缓存登录Token，避免频繁登录触发 429
+        appToken: data.appToken !== undefined ? data.appToken : (existing.appToken || ''),
+        userId: data.userId !== undefined ? data.userId : (existing.userId || ''),
+        tokenTime: data.tokenTime !== undefined ? data.tokenTime : (existing.tokenTime || 0)
       };
       fs.writeFileSync(filePath, YAML.stringify(merged), 'utf8');
       return true;
