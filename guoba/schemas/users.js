@@ -59,6 +59,24 @@ export default [
           bottomHelpMessage: "自动刷步时自由选择步数。支持固定步数(如 20000)或范围格式(如 15000-25000)；输入 0 或留空使用全局随机范围。",
         },
         {
+          field: "pushGroups",
+          label: "自动推送群聊",
+          component: "GSelectGroup",
+          componentProps: {
+            placeholder: "选择自动推送的群聊",
+          },
+          bottomHelpMessage: "刷步成功或失败时，消息将推送到选中的群聊中。",
+        },
+        {
+          field: "pushFriends",
+          label: "自动推送好友",
+          component: "GSelectFriend",
+          componentProps: {
+            placeholder: "选择自动推送的好友",
+          },
+          bottomHelpMessage: "刷步成功或失败时，消息将推送到选中好友的私聊中。",
+        },
+        {
           field: "lastStep",
           label: "上次同步步数",
           component: "InputNumber",

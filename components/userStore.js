@@ -33,6 +33,8 @@ export class UserStore {
         autoStep: data.autoStep !== undefined ? data.autoStep : (existing.autoStep !== undefined ? existing.autoStep : false),
         time: data.time || existing.time || '06:00',
         step: data.step !== undefined ? data.step : (existing.step !== undefined ? existing.step : 0),
+        pushGroups: data.pushGroups !== undefined ? data.pushGroups : (existing.pushGroups || []),
+        pushFriends: data.pushFriends !== undefined ? data.pushFriends : (existing.pushFriends || []),
         lastStep: data.lastStep !== undefined ? data.lastStep : (existing.lastStep || 0),
         lastTime: data.lastTime || existing.lastTime || ''
       };

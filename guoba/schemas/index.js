@@ -17,6 +17,8 @@ export function getConfigData() {
     autoStep: u.autoStep !== false,
     time: u.time || '06:00',
     step: u.step || 0,
+    pushGroups: u.pushGroups || [],
+    pushFriends: u.pushFriends || [],
     lastStep: u.lastStep || 0,
     lastTime: u.lastTime || ''
   }));
@@ -66,6 +68,8 @@ export function setConfigData(data, { Result }) {
           autoStep: u.autoStep !== false,
           time: u.time || '06:00',
           step: stepVal,
+          pushGroups: u.pushGroups || [],
+          pushFriends: u.pushFriends || [],
           lastStep: u.lastStep || 0,
           lastTime: u.lastTime || ''
         });

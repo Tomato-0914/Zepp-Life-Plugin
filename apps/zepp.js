@@ -47,6 +47,45 @@ function validateStepParam(param) {
   return { valid: false, error: '格式错误。请输入单个数字(如 20000)或步数范围(如 15000-25000)，输入 0 代表清除固定步数。' };
 }
 
+async function sendNotification(user, msg) {
+  if (typeof Bot === 'undefined') return;
+
+  // 1. 发送给绑定的 QQ 本人
+  try {
+    await Bot.pickUser(Number(user.qq)).sendMsg(msg);
+  } catch (err) {
+    logger.warn(`[Zepp-Life-Plugin] 自动刷步通知发送给 QQ ${user.qq} 失败: ${err.message}`);
+  }
+
+  // 2. 发送给指定的群聊
+  if (user.pushGroups && Array.isArray(user.pushGroups)) {
+    for (const group of user.pushGroups) {
+      if (!group) continue;
+      try {
+        await Bot.pickGroup(Number(group)).sendMsg(msg);
+        // 间隔 1 秒防风控
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        logger.warn(`[Zepp-Life-Plugin] 自动刷步通知发送给群 ${group} 失败: ${err.message}`);
+      }
+    }
+  }
+
+  // 3. 发送给指定的好友
+  if (user.pushFriends && Array.isArray(user.pushFriends)) {
+    for (const friend of user.pushFriends) {
+      if (!friend || Number(friend) === Number(user.qq)) continue;
+      try {
+        await Bot.pickUser(Number(friend)).sendMsg(msg);
+        // 间隔 1 秒防风控
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        logger.warn(`[Zepp-Life-Plugin] 自动刷步通知发送给好友 ${friend} 失败: ${err.message}`);
+      }
+    }
+  }
+}
+
 async function modifyStepBase(e, user, step, isRandom = false) {
   if (step > 98800) {
     await e.reply('❌ 修改步数失败，单次修改步数不能超过 98,800 步喵~');
@@ -105,6 +144,14 @@ export class ZeppApp extends plugin {
         {
           reg: /^#?设置自动刷步(数|步数)\s*(.*)?$/i,
           fnc: 'setAutoStepCount'
+        },
+        {
+          reg: /^#?设置自动推送群\s*(.*)?$/i,
+          fnc: 'setAutoPushGroups'
+        },
+        {
+          reg: /^#?设置自动推送好友\s*(.*)?$/i,
+          fnc: 'setAutoPushFriends'
         }
       ]
     });
@@ -143,7 +190,10 @@ export class ZeppApp extends plugin {
       }
     }
 
-    await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 自动步数：${customStepText}\n👟 上次同步：${user.lastStep || '暂无'} 步 (${user.lastTime || '尚未同步'})\n\n💡 提示：您可以使用 【#设置自动刷步时间 07:30】 来修改自动刷步时间，或使用 【#设置自动刷步数 15000-25000】 来设定每日的自动刷步固定步数或随机范围。`);
+    const pushGroupsText = user.pushGroups && user.pushGroups.length > 0 ? user.pushGroups.join(', ') : '无';
+    const pushFriendsText = user.pushFriends && user.pushFriends.length > 0 ? user.pushFriends.join(', ') : '无';
+
+    await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 自动步数：${customStepText}\n📢 推送群聊：${pushGroupsText}\n📢 推送好友：${pushFriendsText}\n👟 上次同步：${user.lastStep || '暂无'} 步 (${user.lastTime || '尚未同步'})\n\n💡 提示：您可以使用 【#设置自动刷步时间 07:30】 来修改时间，使用 【#设置自动刷步数 15000-25000】 修改步数，或使用 【#设置自动推送群】/【#设置自动推送好友】配置推送目标。`);
     return true;
   }
 
@@ -323,6 +373,174 @@ export class ZeppApp extends plugin {
     return true;
   }
 
+  // 6. 设置自动推送群聊
+  async setAutoPushGroups(e) {
+    const user = UserStore.getUser(e.user_id);
+    if (!user) {
+      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      return true;
+    }
+
+    const reg = /^#?设置自动推送群\s*(.*)?$/i;
+    const match = e.msg.match(reg);
+    const rawParam = match && match[1] ? match[1].trim() : '';
+
+    // 如果在群聊中发送且没有带参数，则将当前群加入或移出推送列表
+    if (e.isGroup && !rawParam) {
+      let pushGroups = user.pushGroups || [];
+      const currentGroup = String(e.group_id);
+      if (pushGroups.includes(currentGroup)) {
+        pushGroups = pushGroups.filter(g => g !== currentGroup);
+        UserStore.saveUser(e.user_id, { pushGroups });
+        await e.reply(`✅ 已从您的自动刷步推送列表中移除当前群聊【${currentGroup}】。`);
+      } else {
+        pushGroups.push(currentGroup);
+        UserStore.saveUser(e.user_id, { pushGroups });
+        await e.reply(`✅ 已将当前群聊【${currentGroup}】添加到您的自动刷步推送列表中。`);
+      }
+      return true;
+    }
+
+    if (rawParam) {
+      if (rawParam === '关闭' || rawParam === '清空' || rawParam === '0') {
+        UserStore.saveUser(e.user_id, { pushGroups: [] });
+        await e.reply(`✅ 已清空自动刷步推送群聊列表。`);
+        return true;
+      }
+
+      // 解析逗号/空格分隔的群号
+      const groups = rawParam.split(/[,，\s]+/).map(g => g.trim()).filter(g => /^\d+$/.test(g));
+      if (groups.length === 0) {
+        await e.reply(`❌ 格式错误，请输入有效的群号列表（多个群号用逗号隔开，或输入“关闭”清空列表）。`);
+        return true;
+      }
+
+      UserStore.saveUser(e.user_id, { pushGroups: groups });
+      await e.reply(`✅ 已成功将自动刷步推送群聊设置为：\n${groups.join('\n')}`);
+      return true;
+    } else {
+      const currentList = user.pushGroups && user.pushGroups.length > 0 ? user.pushGroups.join(', ') : '暂无';
+      await e.reply(`当前推送群聊：${currentList}\n\n请发送需要推送的群号列表（多个群号用逗号隔开，输入“关闭”清空列表，输入“取消”退出当前操作）：`);
+      this.setContext('setAutoPushGroupsGetInput');
+      return true;
+    }
+  }
+
+  async setAutoPushGroupsGetInput() {
+    const e = this.e;
+    const msg = e.msg ? e.msg.trim() : '';
+
+    if (msg === '取消') {
+      await e.reply('已取消设置。');
+      this.finish('setAutoPushGroupsGetInput');
+      return true;
+    }
+
+    if (msg === '关闭' || msg === '清空' || msg === '0') {
+      this.finish('setAutoPushGroupsGetInput');
+      const user = UserStore.getUser(e.user_id);
+      if (user) {
+        UserStore.saveUser(e.user_id, { pushGroups: [] });
+      }
+      await e.reply(`✅ 已清空自动刷步推送群聊列表。`);
+      return true;
+    }
+
+    const groups = msg.split(/[,，\s]+/).map(g => g.trim()).filter(g => /^\d+$/.test(g));
+    if (groups.length === 0) {
+      await e.reply(`❌ 格式错误。请输入有效的数字群号（多个用逗号隔开，或回复“取消”退出）：`);
+      this.setContext('setAutoPushGroupsGetInput');
+      return true;
+    }
+
+    this.finish('setAutoPushGroupsGetInput');
+    const user = UserStore.getUser(e.user_id);
+    if (!user) {
+      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      return true;
+    }
+
+    UserStore.saveUser(e.user_id, { pushGroups: groups });
+    await e.reply(`✅ 已成功将自动刷步推送群聊设置为：\n${groups.join('\n')}`);
+    return true;
+  }
+
+  // 7. 设置自动推送好友
+  async setAutoPushFriends(e) {
+    const user = UserStore.getUser(e.user_id);
+    if (!user) {
+      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      return true;
+    }
+
+    const reg = /^#?设置自动推送好友\s*(.*)?$/i;
+    const match = e.msg.match(reg);
+    const rawParam = match && match[1] ? match[1].trim() : '';
+
+    if (rawParam) {
+      if (rawParam === '关闭' || rawParam === '清空' || rawParam === '0') {
+        UserStore.saveUser(e.user_id, { pushFriends: [] });
+        await e.reply(`✅ 已清空自动刷步推送好友列表。`);
+        return true;
+      }
+
+      // 解析逗号/空格分隔的 QQ 号
+      const friends = rawParam.split(/[,，\s]+/).map(f => f.trim()).filter(f => /^\d+$/.test(f));
+      if (friends.length === 0) {
+        await e.reply(`❌ 格式错误，请输入有效的好友 QQ 号列表（多个 QQ 号用逗号隔开，或输入“关闭”清空列表）。`);
+        return true;
+      }
+
+      UserStore.saveUser(e.user_id, { pushFriends: friends });
+      await e.reply(`✅ 已成功将自动刷步推送好友设置为：\n${friends.join('\n')}`);
+      return true;
+    } else {
+      const currentList = user.pushFriends && user.pushFriends.length > 0 ? user.pushFriends.join(', ') : '暂无';
+      await e.reply(`当前推送好友：${currentList}\n\n请发送需要推送的好友 QQ 号列表（多个 QQ 用逗号隔开，输入“关闭”清空列表，输入“取消”退出当前操作）：`);
+      this.setContext('setAutoPushFriendsGetInput');
+      return true;
+    }
+  }
+
+  async setAutoPushFriendsGetInput() {
+    const e = this.e;
+    const msg = e.msg ? e.msg.trim() : '';
+
+    if (msg === '取消') {
+      await e.reply('已取消设置。');
+      this.finish('setAutoPushFriendsGetInput');
+      return true;
+    }
+
+    if (msg === '关闭' || msg === '清空' || msg === '0') {
+      this.finish('setAutoPushFriendsGetInput');
+      const user = UserStore.getUser(e.user_id);
+      if (user) {
+        UserStore.saveUser(e.user_id, { pushFriends: [] });
+      }
+      await e.reply(`✅ 已清空自动刷步推送好友列表。`);
+      return true;
+    }
+
+    const friends = msg.split(/[,，\s]+/).map(f => f.trim()).filter(f => /^\d+$/.test(f));
+    if (friends.length === 0) {
+      await e.reply(`❌ 格式错误。请输入有效的好友 QQ 号（多个用逗号隔开，或回复“取消”退出）：`);
+      this.setContext('setAutoPushFriendsGetInput');
+      return true;
+    }
+
+    this.finish('setAutoPushFriendsGetInput');
+    const user = UserStore.getUser(e.user_id);
+    if (!user) {
+      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      return true;
+    }
+
+    UserStore.saveUser(e.user_id, { pushFriends: friends });
+    await e.reply(`✅ 已成功将自动刷步推送好友设置为：\n${friends.join('\n')}`);
+    return true;
+  }
+
   // 定时轮询检查逻辑
   async autoStepCheck() {
     const date = new Date();
@@ -392,24 +610,10 @@ export class ZeppApp extends plugin {
           lastTime: getTimeString()
         });
         logger.info(`[Zepp-Life-Plugin] 自动刷步成功: QQ ${user.qq} -> ${step} 步`);
-        
-        try {
-          if (typeof Bot !== 'undefined') {
-            await Bot.pickUser(Number(user.qq)).sendMsg(`[Zepp-Life-Plugin] 每日自动刷步已执行成功！\n步数：${step} 步\n时间：${getTimeString()}`);
-          }
-        } catch (err) {
-          logger.warn(`[Zepp-Life-Plugin] 自动刷步成功通知发送失败: ${err.message}`);
-        }
+        await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步已执行成功！\n👤 账号：${user.username}\n👟 步数：${step} 步\n⏰ 时间：${getTimeString()}`);
       } else {
         logger.error(`[Zepp-Life-Plugin] 自动刷步失败: QQ ${user.qq} -> 错误: ${res.error}`);
-        
-        try {
-          if (typeof Bot !== 'undefined') {
-            await Bot.pickUser(Number(user.qq)).sendMsg(`[Zepp-Life-Plugin] 每日自动刷步执行失败！\n原因：${res.error}`);
-          }
-        } catch (err) {
-          logger.warn(`[Zepp-Life-Plugin] 自动刷步失败通知发送失败: ${err.message}`);
-        }
+        await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步执行失败！\n👤 账号：${user.username}\n❌ 原因：${res.error}\n⏰ 时间：${getTimeString()}`);
       }
 
       // 每个用户之间随机延迟 3 - 10 秒防风控

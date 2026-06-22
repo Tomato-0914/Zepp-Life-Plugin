@@ -6,3 +6,5 @@ password: ""
 autoStep: false
 time: "06:00"
 step: 0
+pushGroups: []
+pushFriends: []
