@@ -45,6 +45,87 @@ git clone https://github.com/Tomato-0914/Zepp-Life-Plugin.git
 
 ---
 
+## 解决 429 报错（接口限流风控）
+
+如果您的 Yunzai 机器人部署在云服务器（VPS，如腾讯云、阿里云等机房）上，登录绑定时大概率会遇到华米防火墙的风控，报错：`登录请求被华米服务器限流（429 Too Many Requests）`。
+
+这是因为机房 IP 被华米服务器风控导致的，解决办法是利用 **Hugging Face Spaces** 免费搭建一个专属的中转代理服务，操作极其简单且完全免费。
+
+### Hugging Face 代理服务创建步骤
+
+1. **注册并创建空间**：
+   * 登录 [Hugging Face](https://huggingface.co/)（如无账号，使用邮箱免费注册一个）。
+   * 进入 [Hugging Face Spaces](https://huggingface.co/spaces)，点击右上角 **`New Space`**（新建空间）。
+   * 填写基本信息：
+     * **Space name**：自定义名字（例如 `zepp-proxy`）
+     * **Select the Space SDK**：选择 **`Gradio`** (Python/FastAPI 环境)
+     * **Space hardware**：选择默认的 **`CPU basic (Free)`** (完全免费)
+     * **Choose visibility**：选择 **`Public`** (公开，确保机器人无需 Token 即可连接)
+     * 点击底部 **`Create Space`** 创建。
+
+2. **创建代码文件并写入代理逻辑**：
+   * 空间创建完毕后，点击顶部的 **`Files`** 选项卡。
+   * 点击右上角的 **`+ 贡献`**（或 **`+ Add file`**） -> 选择 **`Create a new file`** (创建新文件)。
+   * 文件名输入 **`app.py`**。
+   * 将以下代码完整粘贴进编辑器中：
+
+     ```python
+     import requests
+     from fastapi import FastAPI, Request, Response
+
+     app = FastAPI()
+
+     @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+     async def proxy(request: Request, path: str):
+         target = request.query_params.get("target")
+         if not target:
+             return Response("Zepp Proxy is running! Please use /?target=URL", status_code=200)
+         
+         headers = dict(request.headers)
+         headers.pop("host", None)
+         headers.pop("x-forwarded-for", None)
+         headers.pop("x-forwarded-proto", None)
+         headers.pop("x-forwarded-port", None)
+         
+         method = request.method
+         body = await request.body()
+         
+         try:
+             resp = requests.request(
+                 method=method,
+                 url=target,
+                 headers=headers,
+                 data=body,
+                 allow_redirects=False,
+                 timeout=15
+             )
+             
+             exclude_headers = ['content-encoding', 'transfer-encoding', 'connection', 'keep-alive', 'content-length']
+             resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in exclude_headers}
+             
+             return Response(content=resp.content, status_code=resp.status_code, headers=resp_headers)
+         except Exception as e:
+             return Response(f"Proxy error: {str(e)}", status_code=500)
+
+     if __name__ == "__main__":
+         import uvicorn
+         uvicorn.run(app, host="0.0.0.0", port=7860)
+     ```
+
+   * 下拉页面，点击底部的 **`Commit changes to main`** 按钮保存提交。
+
+3. **等待部署并获取代理链接**：
+   * 提交后，回到 **`App`** 选项卡，等待 10~20 秒，当顶部状态由 `Building` 变为绿色的 **`Running`** 时即代表成功。
+   * 记下你的专属代理链接，格式为：`https://你的用户名-空间名称.hf.space` (例如：`https://siran002-zepp-proxy.hf.space`)。
+
+4. **配置机器人插件**：
+   * 在你的机器人上，可以通过**锅巴面板**（Guoba Panel）或者直接编辑配置文件 **`config/config/config.yaml`**。
+   * 开启“启用中转代理”开关（配置文件中为 `useProxy: true`）。
+   * 填写“中转代理地址”为刚才生成的链接（配置文件中为 `apiProxy: "https://你的用户名-空间名称.hf.space"`）。
+   * 保存并重载插件，即可成功避开机房 IP 限制！
+
+---
+
 ## 致谢
 
 |致谢|名称|
