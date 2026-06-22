@@ -50,39 +50,70 @@ function validateStepParam(param) {
 async function sendNotification(user, msg) {
   if (typeof Bot === 'undefined') return;
 
-  // 1. 发送给绑定的 QQ 本人
+  // Determine status and extract details
+  const isError = /失败/.test(msg);
+  const statusClass = isError ? 'error' : 'success';
+  const statusText = isError ? '失败' : '成功';
+  const stepMatch = msg.match(/步数：?(\d+)/) || msg.match(/步数[:]*\s*(\d+)/);
+  const step = stepMatch ? stepMatch[1] : '';
+  const timeMatch = msg.match(/时间：?([\d- :]+)/);
+  const time = timeMatch ? timeMatch[1] : '';
+  const errorBlock = isError ? `<div class="error-msg">${msg}</div>` : '';
+
+  // Load template and replace placeholders
+  const reportPath = path.join(PLUGIN_ROOT, 'resources', 'html', 'report.html');
+  let html = fs.readFileSync(reportPath, 'utf8');
+  html = html.replace(/{{statusClass}}/g, statusClass)
+    .replace(/{{statusText}}/g, statusText)
+    .replace(/{{username}}/g, user.username || '')
+    .replace(/{{step}}/g, step)
+    .replace(/{{time}}/g, time)
+    .replace(/{{errorBlock}}/g, errorBlock);
+
+  // Write temporary html for screenshot
+  const tempDir = path.join(PLUGIN_ROOT, 'temp');
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+  const tempFile = path.join(tempDir, `report_${Date.now()}.html`);
+  fs.writeFileSync(tempFile, html, 'utf8');
+
+  const pluginName = path.basename(PLUGIN_ROOT);
+  const plgPath = `${process.cwd().replace(/\\\\/g, '/')}/plugins/${pluginName}`;
+
   try {
-    await Bot.pickUser(Number(user.qq)).sendMsg(msg);
-  } catch (err) {
-    logger.warn(`[Zepp-Life-Plugin] 自动刷步通知发送给 QQ ${user.qq} 失败: ${err.message}`);
-  }
-
-  // 2. 发送给指定的群聊
-  if (user.pushGroups && Array.isArray(user.pushGroups)) {
-    for (const group of user.pushGroups) {
-      if (!group) continue;
-      try {
-        await Bot.pickGroup(Number(group)).sendMsg(msg);
-        // 间隔 1 秒防风控
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (err) {
-        logger.warn(`[Zepp-Life-Plugin] 自动刷步通知发送给群 ${group} 失败: ${err.message}`);
+    const img = await puppeteer.screenshot('zepp-life-report', {
+      tplFile: tempFile,
+      type: 'jpeg',
+      quality: 90,
+      version: version,
+      plgPath: plgPath,
+    });
+    if (img) {
+      // Send image to all targets
+      // 1. QQ本人
+      try { await Bot.pickUser(Number(user.qq)).sendMsg(img); } catch (_) {}
+      // 2. 群聊
+      if (Array.isArray(user.pushGroups)) {
+        for (const group of user.pushGroups) {
+          try { await Bot.pickGroup(Number(group)).sendMsg(img); } catch (_) {}
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      // 3. 好友
+      if (Array.isArray(user.pushFriends)) {
+        for (const friend of user.pushFriends) {
+          if (Number(friend) === Number(user.qq)) continue;
+          try { await Bot.pickUser(Number(friend)).sendMsg(img); } catch (_) {}
+          await new Promise(r => setTimeout(r, 1000));
+        }
       }
     }
-  }
-
-  // 3. 发送给指定的好友
-  if (user.pushFriends && Array.isArray(user.pushFriends)) {
-    for (const friend of user.pushFriends) {
-      if (!friend || Number(friend) === Number(user.qq)) continue;
-      try {
-        await Bot.pickUser(Number(friend)).sendMsg(msg);
-        // 间隔 1 秒防风控
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (err) {
-        logger.warn(`[Zepp-Life-Plugin] 自动刷步通知发送给好友 ${friend} 失败: ${err.message}`);
-      }
-    }
+  } catch (e) {
+    logger.warn(`[Zepp-Life-Plugin] 生成通知图片失败: ${e.message}`);
+    // fallback to text
+    try { await Bot.pickUser(Number(user.qq)).sendMsg(msg); } catch (_) {}
+  } finally {
+    // cleanup
+    try { fs.unlinkSync(tempFile); } catch (_) {}
   }
 }
 
@@ -134,24 +165,8 @@ export class ZeppApp extends plugin {
           fnc: 'manualStep'
         },
         {
-          reg: /^#?自动刷步\s*(开启|关闭|)?$/i,
-          fnc: 'toggleAutoStep'
-        },
-        {
-          reg: /^#?设置自动刷步时间\s*(\d{1,2})[：:](\d{1,2})$/i,
-          fnc: 'changeAutoTime'
-        },
-        {
-          reg: /^#?设置自动刷步(数|步数)\s*(.*)?$/i,
-          fnc: 'setAutoStepCount'
-        },
-        {
-          reg: /^#?设置自动推送群\s*(.*)?$/i,
-          fnc: 'setAutoPushGroups'
-        },
-        {
-          reg: /^#?设置自动推送好友\s*(.*)?$/i,
-          fnc: 'setAutoPushFriends'
+          reg: /^#?随机刷步$/i,
+          fnc: 'randomStep'
         }
       ]
     });

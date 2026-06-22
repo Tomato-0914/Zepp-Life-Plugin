@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Zepp Life 刷步报告</title>
+  <link rel="stylesheet" href="{{plgPath}}/resources/css/report.css">
+</head>
+<body>
+  <div class="container {{statusClass}}">
+    <div class="status-header">
+      <span class="title">自动刷步汇报</span>
+      <span class="status-badge">{{statusText}}</span>
+    </div>
+
+    <div class="report-fields">
+      <div class="field-item">
+        <span class="field-label">绑定账号</span>
+        <span class="field-value">{{username}}</span>
+      </div>
+      <div class="field-item">
+        <span class="field-label">同步步数</span>
+        <span class="field-value highlight">{{step}} 步</span>
+      </div>
+      <div class="field-item">
+        <span class="field-label">同步时间</span>
+        <span class="field-value">{{time}}</span>
+      </div>
+    </div>
+
+    {{errorBlock}}
+
+    <div class="footer">
+      Zepp-Life-Plugin v{{version}} | 每日健康打卡助手
+    </div>
+  </div>
+</body>
+</html>

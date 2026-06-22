@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Zepp Life 刷步助手设置</title>
+  <link rel="stylesheet" href="{{plgPath}}/resources/css/setting.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Zepp Life 刷步设置</h1>
+      <p>修改自动刷步与消息推送的目标参数配置指南</p>
+    </div>
+
+    <!-- 自动刷步设置 -->
+    <div class="group-box">
+      <div class="group-title">自动刷步参数配置</div>
+      <div class="command-list">
+        <div class="command-item">
+          <div class="command-row">
+            <div class="command-name">#刷步设置自动刷步 [开启/关闭]</div>
+            <span class="command-badge">定时开关</span>
+          </div>
+          <div class="command-desc">开启或关闭您个人的每日自动定时刷步任务。</div>
+          <div class="command-example">示例：#刷步设置自动刷步 开启</div>
+        </div>
+        <div class="command-item">
+          <div class="command-row">
+            <div class="command-name">#刷步设置自动刷步时间 [时:分]</div>
+            <span class="command-badge">定时时间</span>
+          </div>
+          <div class="command-desc">设置每日自动同步步数的时间，格式为 HH:MM。</div>
+          <div class="command-example">示例：#刷步设置自动刷步时间 07:30</div>
+        </div>
+        <div class="command-item">
+          <div class="command-row">
+            <div class="command-name">#刷步设置自动刷步步数 [步数/范围]</div>
+            <span class="command-badge">自动步数</span>
+          </div>
+          <div class="command-desc">设置自动同步步数（支持固定值，或范围如 15000-25000 随机；输入 0 使用全局默认范围）。</div>
+          <div class="command-example">示例：#刷步设置自动刷步步数 25000 或 #刷步设置自动刷步步数 15000-25000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 消息推送设置 -->
+    <div class="group-box">
+      <div class="group-title">消息分发推送配置</div>
+      <div class="command-list">
+        <div class="command-item">
+          <div class="command-row">
+            <div class="command-name">#刷步设置推送群 [群号/关闭]</div>
+            <span class="command-badge">推送群聊</span>
+          </div>
+          <div class="command-desc">设置推送的群聊。在群聊内发送该命令可一键快捷加退当前群；输入“关闭”清空列表。</div>
+          <div class="command-example">示例：#刷步设置推送群 12345, 67890</div>
+        </div>
+        <div class="command-item">
+          <div class="command-row">
+            <div class="command-name">#刷步设置自动推送好友 [QQ号/关闭]</div>
+            <span class="command-badge">推送好友</span>
+          </div>
+          <div class="command-desc">设置推送的指定好友私聊。输入“关闭”清空列表。</div>
+          <div class="command-example">示例：#刷步设置自动推送好友 85273416</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Created By <span>Antigravity</span> | Zepp-Life-Plugin v{{version}}
+    </div>
+  </div>
+</body>
+</html>
