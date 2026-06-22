@@ -24,7 +24,7 @@ export class ZeppApp extends plugin {
           fnc: 'viewStatus'
         },
         {
-          reg: /^#?(刷步数|修改步数)(\s+\d+)?/i,
+          reg: /^#?(刷步数|修改步数)(\s*\d+)?/i,
           fnc: 'manualStep'
         },
         {
@@ -118,12 +118,12 @@ export class ZeppApp extends plugin {
       return true;
     }
 
-    const reg = /^#?(刷步数|修改步数)(\s+(\d+))?/i;
+    const reg = /^#?(刷步数|修改步数)\s*(\d+)?/i;
     const match = e.msg.match(reg);
     let step = 0;
 
-    if (match && match[3]) {
-      step = parseInt(match[3]);
+    if (match && match[2]) {
+      step = parseInt(match[2]);
     } else {
       // 未指定步数，随机生成
       const minStep = ZeppConfig.get('autoStep.minStep') || 18000;
