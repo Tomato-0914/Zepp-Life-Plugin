@@ -17,7 +17,7 @@
 
 ## 安装说明
 
-在您的 Yunzai 机器人根目录下，进入 `plugins` 文件夹并克隆本插件：
+在您的 Yunzai 机器人根目录下克隆本插件：
 
 ```bash
 git clone https://github.com/Tomato-0914/Zepp-Life-Plugin.git ./plugins/Zepp-Life-Plugin
