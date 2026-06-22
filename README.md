@@ -45,6 +45,6 @@ git clone https://github.com/Tomato-0914/Zepp-Life-Plugin.git
 
 ## 致谢
 
-|致谢|名称|
+|名称||
 |-|-|
 |Antigravity|核心编辑|
