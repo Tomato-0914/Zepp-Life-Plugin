@@ -142,13 +142,19 @@ async function modifyStepBase(e, user, step, isRandom = false) {
   const msgType = isRandom ? '随机步数' : '修改步数';
   await e.reply(`🔄 正在同步${msgType}为 ${step} 步，请稍候...`);
 
-  const res = await ZeppAPI.run(user.username, user.password, step);
+  // 传入缓存 Token 避免每次重复登录触发 429 限流
+  const cachedToken = { appToken: user.appToken, userId: user.userId, tokenTime: user.tokenTime };
+  const res = await ZeppAPI.run(user.username, user.password, step, cachedToken);
   if (res.success) {
     const nowTimeStr = getTimeString();
-    UserStore.saveUser(e.user_id, {
-      lastStep: step,
-      lastTime: nowTimeStr
-    });
+    const saveData = { lastStep: step, lastTime: nowTimeStr };
+    // 如有新 Token（重新登录），一并保存
+    if (res.newToken) {
+      saveData.appToken = res.newToken.appToken;
+      saveData.userId = res.newToken.userId;
+      saveData.tokenTime = res.newToken.tokenTime;
+    }
+    UserStore.saveUser(e.user_id, saveData);
     await e.reply(`✅ 步数修改成功！\n当前步数：${step}\n请打开微信运动或支付宝运动查看是否同步刷新喵~`);
   } else {
     await e.reply(`❌ 修改步数失败。\n原因：${res.error}`);
@@ -626,12 +632,18 @@ export class ZeppApp extends plugin {
 
       logger.info(`[Zepp-Life-Plugin] 自动刷步：正在同步 QQ ${user.qq} -> ${step} 步`);
 
-      const res = await ZeppAPI.run(user.username, user.password, step);
+      // 传入缓存 Token 避免每次重复登录触发 429 限流
+      const cachedToken = { appToken: user.appToken, userId: user.userId, tokenTime: user.tokenTime };
+      const res = await ZeppAPI.run(user.username, user.password, step, cachedToken);
       if (res.success) {
-        UserStore.saveUser(user.qq, {
-          lastStep: step,
-          lastTime: getTimeString()
-        });
+        const saveData = { lastStep: step, lastTime: getTimeString() };
+        // 如有新 Token（重新登录），一并保存
+        if (res.newToken) {
+          saveData.appToken = res.newToken.appToken;
+          saveData.userId = res.newToken.userId;
+          saveData.tokenTime = res.newToken.tokenTime;
+        }
+        UserStore.saveUser(user.qq, saveData);
         logger.info(`[Zepp-Life-Plugin] 自动刷步成功: QQ ${user.qq} -> ${step} 步`);
         await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步已执行成功！\n👤 账号：${user.username}\n👟 步数：${step} 步\n⏰ 时间：${getTimeString()}`);
       } else {
