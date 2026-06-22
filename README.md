@@ -119,7 +119,7 @@ pnpm install --filter=Zepp-Life-Plugin
 
 3. **等待部署并获取代理链接**：
    * 提交后，回到 **`App`** 选项卡，等待 10~20 秒，当顶部状态由 `Building` 变为绿色的 **`Running`** 时即代表成功。
-   * 记下你的专属代理链接，格式为：`https://你的用户名-空间名称.hf.space` (例如：`https://siran002-zepp-proxy.hf.space`)。
+   * 记下你的专属代理链接，格式为：`https://你的用户名-空间名称.hf.space`。
 
 4. **配置机器人插件**：
    * 在你的机器人上，可以通过**锅巴面板**（Guoba Panel）或者直接编辑配置文件 **`config/config/config.yaml`**。
