@@ -4,7 +4,11 @@
 minStep: 18000
 maxStep: 28000
 
-# 接口中转代理 (可选，填入自建的 Cloudflare Worker 代理或其它反代链接，以解决服务器机房 IP 遭遇 429 限流风控的问题)
-# 格式如: https://zepp-proxy.xxxx.workers.dev
+# 是否启用中转代理 (默认关闭，若遇到 429 报错或接口限流时建议开启并配置下方的 apiProxy 链接)
+useProxy: false
+
+# 接口中转代理 (填入自建的 Hugging Face 代理或其它反代链接)
+# 格式如: https://siran002-zepp-proxy.hf.space
 apiProxy: ""
+
 

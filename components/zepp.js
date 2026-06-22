@@ -50,8 +50,9 @@ class ZeppAPI {
 
   static async getAccessCode(username, password) {
     let url = 'https://api-user.zepp.com/v2/registrations/tokens';
+    const useProxy = ZeppConfig.get('useProxy');
     const apiProxy = ZeppConfig.get('apiProxy');
-    if (apiProxy) {
+    if (useProxy && apiProxy) {
       url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
     }
     const loginData = {
@@ -121,8 +122,9 @@ class ZeppAPI {
 
   static async getToken(username, accessCode) {
     let url = 'https://account.huami.com/v2/client/login';
+    const useProxy = ZeppConfig.get('useProxy');
     const apiProxy = ZeppConfig.get('apiProxy');
-    if (apiProxy) {
+    if (useProxy && apiProxy) {
       url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
     }
     const deviceId = crypto.randomUUID();
@@ -206,8 +208,9 @@ class ZeppAPI {
     
     // 华米手环运动数据上传接口
     let url = `https://api-mifit-cn2.huami.com/v1/data/band_data.json?t=${timestamp}`;
+    const useProxy = ZeppConfig.get('useProxy');
     const apiProxy = ZeppConfig.get('apiProxy');
-    if (apiProxy) {
+    if (useProxy && apiProxy) {
       url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
     }
 
