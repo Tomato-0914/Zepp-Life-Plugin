@@ -206,14 +206,6 @@ class ZeppAPI {
 
     const t = String(Math.floor(Date.now() / 1000));
     const timestamp = Date.now();
-    
-    // 华米手环运动数据上传接口
-    let url = `https://api-mifit-cn2.huami.com/v1/data/band_data.json?t=${timestamp}`;
-    const useProxy = ZeppConfig.get('useProxy');
-    const apiProxy = ZeppConfig.get('apiProxy');
-    if (useProxy && apiProxy) {
-      url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
-    }
 
     // 根据步数估算距离和卡路里
     const dis = Math.round(step * 0.6); // 约 0.6 米/步
@@ -288,11 +280,39 @@ class ZeppAPI {
       data_json: JSON.stringify(dataJsonObj)
     };
 
-    const res = await this.requests(url, postData, appToken);
-    if (res.data?.code == '1' || res.data?.message === 'success' || res.data?.code === 1) {
+    const hosts = [
+      'api-mifit-cn.huami.com',
+      'api-mifit-cn2.huami.com',
+      'api-mifit-cn3.huami.com'
+    ];
+
+    const promises = hosts.map(async (host) => {
+      let url = `https://${host}/v1/data/band_data.json?t=${timestamp}`;
+      const useProxy = ZeppConfig.get('useProxy');
+      const apiProxy = ZeppConfig.get('apiProxy');
+      if (useProxy && apiProxy) {
+        url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
+      }
+      try {
+        const res = await this.requests(url, postData, appToken);
+        if (res.data?.code == '1' || res.data?.message === 'success' || res.data?.code === 1) {
+          return { host, ok: true };
+        } else {
+          return { host, ok: false, error: res.data?.message || `code: ${res.data?.code}` };
+        }
+      } catch (err) {
+        return { host, ok: false, error: err.message };
+      }
+    });
+
+    const results = await Promise.all(promises);
+    const successful = results.filter(r => r.ok);
+    if (successful.length > 0) {
+      logger.info(`[Zepp-Life-Plugin] 步数同步成功，成功节点: ${successful.map(s => s.host).join(', ')}`);
       return true;
     } else {
-      throw new Error(res.data?.message || `修改接口返回失败, code: ${res.data?.code}`);
+      const errMsgs = results.map(r => `${r.host}: ${r.error}`).join(' | ');
+      throw new Error(`所有区域接口同步失败: ${errMsgs}`);
     }
   }
 
