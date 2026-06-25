@@ -83,7 +83,7 @@ export class ZeppSetting extends plugin {
     const htmlPath = path.join(PLUGIN_ROOT, 'resources', 'html', 'setting.html');
 
     if (!fs.existsSync(htmlPath)) {
-      await e.reply('❌ 设置面板模板文件不存在喵~');
+      await e.reply('❎ 设置面板模板文件不存在喵~');
       return true;
     }
 
@@ -102,11 +102,11 @@ export class ZeppSetting extends plugin {
       if (img) {
         await e.reply(img);
       } else {
-        await e.reply('❌ 生成图片设置面板失败喵~');
+        await e.reply('❎ 生成图片设置面板失败喵~');
       }
     } catch (err) {
       logger.error('[Zepp-Life-Plugin] 设置面板生成错误：', err);
-      await e.reply(`❌ 设置面板生成失败，原因：${err.message}`);
+      await e.reply(`❎ 设置面板生成失败，原因：${err.message}`);
     }
     return true;
   }
@@ -115,7 +115,7 @@ export class ZeppSetting extends plugin {
   async toggleAutoStep(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号。');
       return true;
     }
 
@@ -141,7 +141,7 @@ export class ZeppSetting extends plugin {
   async changeAutoTime(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号。');
       return true;
     }
 
@@ -153,7 +153,7 @@ export class ZeppSetting extends plugin {
     let minute = parseInt(match[2]);
 
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      await e.reply('❌ 时间格式错误，小时范围为 0-23，分钟范围为 0-59。');
+      await e.reply('❎ 时间格式错误，小时范围为 0-23，分钟范围为 0-59。');
       return true;
     }
 
@@ -169,7 +169,7 @@ export class ZeppSetting extends plugin {
   async setAutoStepCount(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -180,7 +180,7 @@ export class ZeppSetting extends plugin {
     if (rawParam) {
       const res = validateStepParam(rawParam);
       if (!res.valid) {
-        await e.reply(`❌ ${res.error}`);
+        await e.reply(`❎ ${res.error}`);
         return true;
       }
 
@@ -212,7 +212,7 @@ export class ZeppSetting extends plugin {
 
     const res = validateStepParam(msg);
     if (!res.valid) {
-      await e.reply(`❌ ${res.error}\n\n请重新输入，或回复“取消”退出当前操作：`);
+      await e.reply(`❎ ${res.error}\n\n请重新输入，或回复“取消”退出当前操作：`);
       this.setContext('setAutoStepCountGetParam');
       return true;
     }
@@ -221,7 +221,7 @@ export class ZeppSetting extends plugin {
 
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      await e.reply('❎ 绑定失效，请重新绑定账号。');
       return true;
     }
 
@@ -240,7 +240,7 @@ export class ZeppSetting extends plugin {
   async setAutoPushGroups(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -274,7 +274,7 @@ export class ZeppSetting extends plugin {
       // 解析逗号/空格分隔的群号
       const groups = rawParam.split(/[,，\s]+/).map(g => g.trim()).filter(g => /^\d+$/.test(g));
       if (groups.length === 0) {
-        await e.reply(`❌ 格式错误，请输入有效的群号列表（多个群号用逗号隔开，或输入“关闭”清空列表）。`);
+        await e.reply(`❎ 格式错误，请输入有效的群号列表（多个群号用逗号隔开，或输入“关闭”清空列表）。`);
         return true;
       }
 
@@ -311,7 +311,7 @@ export class ZeppSetting extends plugin {
 
     const groups = msg.split(/[,，\s]+/).map(g => g.trim()).filter(g => /^\d+$/.test(g));
     if (groups.length === 0) {
-      await e.reply(`❌ 格式错误。请输入有效的数字群号（多个用逗号隔开，或回复“取消”退出）：`);
+      await e.reply(`❎ 格式错误。请输入有效的数字群号（多个用逗号隔开，或回复“取消”退出）：`);
       this.setContext('setAutoPushGroupsGetInput');
       return true;
     }
@@ -319,7 +319,7 @@ export class ZeppSetting extends plugin {
     this.finish('setAutoPushGroupsGetInput');
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      await e.reply('❎ 绑定失效，请重新绑定账号。');
       return true;
     }
 
@@ -332,7 +332,7 @@ export class ZeppSetting extends plugin {
   async setAutoPushFriends(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -350,7 +350,7 @@ export class ZeppSetting extends plugin {
       // 解析逗号/空格分隔的 QQ 号
       const friends = rawParam.split(/[,，\s]+/).map(f => f.trim()).filter(f => /^\d+$/.test(f));
       if (friends.length === 0) {
-        await e.reply(`❌ 格式错误，请输入有效的好友 QQ 号列表（多个 QQ 号用逗号隔开，或输入“关闭”清空列表）。`);
+        await e.reply(`❎ 格式错误，请输入有效的好友 QQ 号列表（多个 QQ 号用逗号隔开，或输入“关闭”清空列表）。`);
         return true;
       }
 
@@ -387,7 +387,7 @@ export class ZeppSetting extends plugin {
 
     const friends = msg.split(/[,，\s]+/).map(f => f.trim()).filter(f => /^\d+$/.test(f));
     if (friends.length === 0) {
-      await e.reply(`❌ 格式错误。请输入有效的好友 QQ 号（多个用逗号隔开，或回复“取消”退出）：`);
+      await e.reply(`❎ 格式错误。请输入有效的好友 QQ 号（多个用逗号隔开，或回复“取消”退出）：`);
       this.setContext('setAutoPushFriendsGetInput');
       return true;
     }
@@ -395,7 +395,7 @@ export class ZeppSetting extends plugin {
     this.finish('setAutoPushFriendsGetInput');
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      await e.reply('❎ 绑定失效，请重新绑定账号。');
       return true;
     }
 

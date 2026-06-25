@@ -33,7 +33,7 @@ export class ZeppLogin extends plugin {
 
     sessions[e.user_id] = {};
     await e.reply('请输入Zepp Life账号');
-    
+
     // 设置下一个消息的上下文处理函数
     this.setContext('bindStep2_GetUsername');
     return true;
@@ -58,7 +58,7 @@ export class ZeppLogin extends plugin {
 
     sessions[e.user_id].username = msg;
     await e.reply('请输入Zepp Life密码');
-    
+
     this.finish('bindStep2_GetUsername');
     this.setContext('bindStep3_GetPassword');
     return true;
@@ -83,7 +83,7 @@ export class ZeppLogin extends plugin {
 
     const { username } = sessions[e.user_id] || {};
     if (!username) {
-      await e.reply('❌ 会话数据丢失，请重新发送 #绑定刷步 开始绑定。');
+      await e.reply('❎ 会话数据丢失，请重新发送 #绑定刷步 开始绑定。');
       this.finish('bindStep3_GetPassword');
       return true;
     }
@@ -111,7 +111,7 @@ export class ZeppLogin extends plugin {
       await e.reply('✅ 验证通过，账号绑定成功！');
     } catch (err) {
       logger.error('[Zepp-Life-Plugin] 账号引导式绑定失败:', err);
-      await e.reply(`❌ 绑定失败，华米登录验证不通过。\n原因：${err.message}`);
+      await e.reply(`❎ 绑定失败，华米登录验证不通过。\n原因：${err.message}`);
     }
 
     this.finish('bindStep3_GetPassword');
@@ -122,7 +122,7 @@ export class ZeppLogin extends plugin {
   async unbindAccount(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号。');
       return true;
     }
 

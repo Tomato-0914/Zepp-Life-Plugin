@@ -128,14 +128,14 @@ async function sendNotification(user, msg) {
 
 async function modifyStepBase(e, user, step, isRandom = false) {
   if (step > 98800) {
-    await e.reply('❌ 修改步数失败，单次修改步数不能超过 98,800 步喵~');
+    await e.reply('❎ 修改步数失败，单次修改步数不能超过 98,800 步喵~');
     return true;
   }
 
   const todayStr = getTodayDateString();
   if (user.lastTime && user.lastTime.startsWith(todayStr)) {
     if (step <= user.lastStep) {
-      await e.reply(`❌ 修改步数失败。\n提示：今日已同步步数为 ${user.lastStep} 步，新修改的步数不能小于或等于今日已同步的步数喵~`);
+      await e.reply(`❎ 修改步数失败。\n提示：今日已同步步数为 ${user.lastStep} 步，新修改的步数不能小于或等于今日已同步的步数喵~`);
       return true;
     }
   }
@@ -158,7 +158,7 @@ async function modifyStepBase(e, user, step, isRandom = false) {
     UserStore.saveUser(e.user_id, saveData);
     await e.reply(`✅ 步数修改成功！\n当前步数：${step}\n请打开微信运动或支付宝运动查看是否同步刷新喵~`);
   } else {
-    await e.reply(`❌ 修改步数失败。\n原因：${res.error}`);
+    await e.reply(`❎ 修改步数失败。\n原因：${res.error}`);
   }
   return true;
 }
@@ -198,7 +198,7 @@ export class ZeppApp extends plugin {
   async viewStatus(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -256,7 +256,7 @@ export class ZeppApp extends plugin {
       if (img) {
         await e.reply(img);
       } else {
-        await e.reply('❌ 生成状态图片失败喵~');
+        await e.reply('❎ 生成状态图片失败喵~');
       }
     } catch (err) {
       logger.error(`[Zepp-Life-Plugin] 生成绑定状态图片失败: ${err.message}`);
@@ -273,7 +273,7 @@ export class ZeppApp extends plugin {
   async manualStep(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -303,7 +303,7 @@ export class ZeppApp extends plugin {
 
     const step = parseInt(msg);
     if (isNaN(step) || step <= 0) {
-      await e.reply('❌ 输入错误。请输入大于 0 的有效数字，或回复“取消”退出当前操作：');
+      await e.reply('❎ 输入错误。请输入大于 0 的有效数字，或回复“取消”退出当前操作：');
       this.setContext('manualStepGetNumber');
       return true;
     }
@@ -312,7 +312,7 @@ export class ZeppApp extends plugin {
 
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      await e.reply('❎ 绑定失效，请重新绑定账号。');
       return true;
     }
 
@@ -324,7 +324,7 @@ export class ZeppApp extends plugin {
   async toggleAutoStep(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号。');
       return true;
     }
 
@@ -350,7 +350,7 @@ export class ZeppApp extends plugin {
   async changeAutoTime(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号。');
       return true;
     }
 
@@ -362,7 +362,7 @@ export class ZeppApp extends plugin {
     let minute = parseInt(match[2]);
 
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      await e.reply('❌ 时间格式错误，小时范围为 0-23，分钟范围为 0-59。');
+      await e.reply('❎ 时间格式错误，小时范围为 0-23，分钟范围为 0-59。');
       return true;
     }
 
@@ -378,7 +378,7 @@ export class ZeppApp extends plugin {
   async setAutoStepCount(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -389,7 +389,7 @@ export class ZeppApp extends plugin {
     if (rawParam) {
       const res = validateStepParam(rawParam);
       if (!res.valid) {
-        await e.reply(`❌ ${res.error}`);
+        await e.reply(`❎ ${res.error}`);
         return true;
       }
 
@@ -421,7 +421,7 @@ export class ZeppApp extends plugin {
 
     const res = validateStepParam(msg);
     if (!res.valid) {
-      await e.reply(`❌ ${res.error}\n\n请重新输入，或回复“取消”退出当前操作：`);
+      await e.reply(`❎ ${res.error}\n\n请重新输入，或回复“取消”退出当前操作：`);
       this.setContext('setAutoStepCountGetParam');
       return true;
     }
@@ -430,7 +430,7 @@ export class ZeppApp extends plugin {
 
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      await e.reply('❎ 绑定失效，请重新绑定账号。');
       return true;
     }
 
@@ -449,7 +449,7 @@ export class ZeppApp extends plugin {
   async setAutoPushGroups(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -483,7 +483,7 @@ export class ZeppApp extends plugin {
       // 解析逗号/空格分隔的群号
       const groups = rawParam.split(/[,，\s]+/).map(g => g.trim()).filter(g => /^\d+$/.test(g));
       if (groups.length === 0) {
-        await e.reply(`❌ 格式错误，请输入有效的群号列表（多个群号用逗号隔开，或输入“关闭”清空列表）。`);
+        await e.reply(`❎ 格式错误，请输入有效的群号列表（多个群号用逗号隔开，或输入“关闭”清空列表）。`);
         return true;
       }
 
@@ -520,7 +520,7 @@ export class ZeppApp extends plugin {
 
     const groups = msg.split(/[,，\s]+/).map(g => g.trim()).filter(g => /^\d+$/.test(g));
     if (groups.length === 0) {
-      await e.reply(`❌ 格式错误。请输入有效的数字群号（多个用逗号隔开，或回复“取消”退出）：`);
+      await e.reply(`❎ 格式错误。请输入有效的数字群号（多个用逗号隔开，或回复“取消”退出）：`);
       this.setContext('setAutoPushGroupsGetInput');
       return true;
     }
@@ -528,7 +528,7 @@ export class ZeppApp extends plugin {
     this.finish('setAutoPushGroupsGetInput');
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      await e.reply('❎ 绑定失效，请重新绑定账号。');
       return true;
     }
 
@@ -541,7 +541,7 @@ export class ZeppApp extends plugin {
   async setAutoPushFriends(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 
@@ -559,7 +559,7 @@ export class ZeppApp extends plugin {
       // 解析逗号/空格分隔的 QQ 号
       const friends = rawParam.split(/[,，\s]+/).map(f => f.trim()).filter(f => /^\d+$/.test(f));
       if (friends.length === 0) {
-        await e.reply(`❌ 格式错误，请输入有效的好友 QQ 号列表（多个 QQ 号用逗号隔开，或输入“关闭”清空列表）。`);
+        await e.reply(`❎ 格式错误，请输入有效的好友 QQ 号列表（多个 QQ 号用逗号隔开，或输入“关闭”清空列表）。`);
         return true;
       }
 
@@ -596,7 +596,7 @@ export class ZeppApp extends plugin {
 
     const friends = msg.split(/[,，\s]+/).map(f => f.trim()).filter(f => /^\d+$/.test(f));
     if (friends.length === 0) {
-      await e.reply(`❌ 格式错误。请输入有效的好友 QQ 号（多个用逗号隔开，或回复“取消”退出）：`);
+      await e.reply(`❎ 格式错误。请输入有效的好友 QQ 号（多个用逗号隔开，或回复“取消”退出）：`);
       this.setContext('setAutoPushFriendsGetInput');
       return true;
     }
@@ -604,7 +604,7 @@ export class ZeppApp extends plugin {
     this.finish('setAutoPushFriendsGetInput');
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 绑定失效，请重新绑定账号。');
+      await e.reply('❎ 绑定失效，请重新绑定账号。');
       return true;
     }
 
@@ -664,7 +664,7 @@ export class ZeppApp extends plugin {
           if (isFixed) {
             // 用户固定了步数，但小于或等于今日已刷步数，由于接口无法倒退，直接跳过此用户
             logger.info(`[Zepp-Life-Plugin] 自动刷步跳过: QQ ${user.qq} 的固定步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}`);
-            await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步已跳过！\n👤 账号：${user.username}\n👟 步数：${step} 步\n❌ 原因：设定固定步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}\n⏰ 时间：${getTimeString()}`);
+            await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步已跳过！\n👤 账号：${user.username}\n👟 步数：${step} 步\n❎ 原因：设定固定步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}\n⏰ 时间：${getTimeString()}`);
             continue;
           } else {
             // 随机步数或范围情况，自动生成一个略大的数以保证同步成功
@@ -692,7 +692,7 @@ export class ZeppApp extends plugin {
         await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步已执行成功！\n👤 账号：${user.username}\n👟 步数：${step} 步\n⏰ 时间：${getTimeString()}`);
       } else {
         logger.error(`[Zepp-Life-Plugin] 自动刷步失败: QQ ${user.qq} -> 错误: ${res.error}`);
-        await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步执行失败！\n👤 账号：${user.username}\n❌ 原因：${res.error}\n⏰ 时间：${getTimeString()}`);
+        await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步执行失败！\n👤 账号：${user.username}\n❎ 原因：${res.error}\n⏰ 时间：${getTimeString()}`);
       }
 
       // 每个用户之间随机延迟 3 - 10 秒防风控
@@ -721,7 +721,7 @@ export class ZeppRandomStep extends plugin {
   async randomStep(e) {
     const user = UserStore.getUser(e.user_id);
     if (!user) {
-      await e.reply('❌ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
+      await e.reply('❎ 您当前未绑定 Zepp Life 账号，请私聊发送【#zepp绑定】进行绑定。');
       return true;
     }
 

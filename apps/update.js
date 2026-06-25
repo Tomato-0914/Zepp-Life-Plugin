@@ -68,7 +68,7 @@ export class ZeppUpdate extends plugin {
 
   async doUpdate(e) {
     if (!e.isMaster) {
-      await e.reply('❌ 仅限我的主人可以进行版本升级喵~');
+      await e.reply('❎ 仅限我的主人可以进行版本升级喵~');
       return false;
     }
     if (updating) {
@@ -86,7 +86,7 @@ export class ZeppUpdate extends plugin {
       const ret = await execCommand('git pull', { cwd: PLUGIN_ROOT });
 
       if (ret.error) {
-        messages.push(`❌ 更新失败：\n${ret.error.message || ret.stderr}`);
+        messages.push(`❎ 更新失败：\n${ret.error.message || ret.stderr}`);
         await this.sendAll(messages, e);
         return false;
       }
@@ -140,7 +140,7 @@ export class ZeppUpdate extends plugin {
 
     } catch (err) {
       logger.error(`[Zepp-Life-Plugin] 更新异常: ${err}`);
-      await e.reply(`❌ 更新出错：${err.message}`);
+      await e.reply(`❎ 更新出错：${err.message}`);
     } finally {
       updating = false;
     }

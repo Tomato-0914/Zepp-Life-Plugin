@@ -28,7 +28,7 @@ export class ZeppHelp extends plugin {
     const htmlPath = path.join(PLUGIN_ROOT, 'resources', 'html', 'help.html');
 
     if (!fs.existsSync(htmlPath)) {
-      await e.reply('❌ 帮助模板文件不存在喵~');
+      await e.reply('❎ 帮助模板文件不存在喵~');
       return true;
     }
 
@@ -47,11 +47,11 @@ export class ZeppHelp extends plugin {
       if (img) {
         await e.reply(img);
       } else {
-        await e.reply('❌ 生成图片帮助失败喵~');
+        await e.reply('❎ 生成图片帮助失败喵~');
       }
     } catch (err) {
       logger.error('[Zepp-Life-Plugin] 帮助生成错误：', err);
-      await e.reply(`❌ 帮助生成失败，原因：${err.message}`);
+      await e.reply(`❎ 帮助生成失败，原因：${err.message}`);
     }
     return true;
   }
