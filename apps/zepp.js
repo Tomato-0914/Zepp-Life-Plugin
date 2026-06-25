@@ -12,12 +12,12 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(PLUGIN_ROOT, 'package.j
 const version = packageJson.version;
 
 const getTodayDateString = () => {
-  const d = new Date();
+  const d = new Date(new Date().getTime() + (8 * 60 * 60 * 1000) + new Date().getTimezoneOffset() * 60 * 1000);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 const getTimeString = () => {
-  const d = new Date();
+  const d = new Date(new Date().getTime() + (8 * 60 * 60 * 1000) + new Date().getTimezoneOffset() * 60 * 1000);
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
@@ -572,7 +572,7 @@ export class ZeppApp extends plugin {
 
   // 定时轮询检查逻辑
   async autoStepCheck() {
-    const date = new Date();
+    const date = new Date(new Date().getTime() + (8 * 60 * 60 * 1000) + new Date().getTimezoneOffset() * 60 * 1000);
     const pad = (num) => String(num).padStart(2, '0');
     const currentTimeStr = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 

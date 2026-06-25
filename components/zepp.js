@@ -195,7 +195,8 @@ class ZeppAPI {
 
 
   static async changeStep(userId, appToken, step) {
-    const date = new Date();
+    // Force UTC+8 (China Standard Time)
+    const date = new Date(new Date().getTime() + (8 * 60 * 60 * 1000) + new Date().getTimezoneOffset() * 60 * 1000);
     const year = date.getFullYear();
     let month = date.getMonth() + 1;
     let strDate = date.getDate();
