@@ -28,6 +28,7 @@ export function getConfigData() {
     maxStep: ZeppConfig.get('maxStep') || 28000,
     useProxy: ZeppConfig.get('useProxy') === true,
     apiProxy: ZeppConfig.get('apiProxy') || '',
+    dpi: ZeppConfig.get('dpi') !== undefined ? ZeppConfig.get('dpi') : 200,
     usersData: {
       users
     }
@@ -48,6 +49,9 @@ export function setConfigData(data, { Result }) {
     }
     if (data.apiProxy !== undefined) {
       ZeppConfig.set('apiProxy', String(data.apiProxy).trim());
+    }
+    if (data.dpi !== undefined) {
+      ZeppConfig.set('dpi', Number(data.dpi));
     }
 
     // 2. 保存用户列表配置
