@@ -75,16 +75,32 @@ body {
 
 .detail-item {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   font-size: 18px;
   line-height: 1.5;
 }
 
-.label {
+.emoji {
+  font-size: 18px;
+  margin-right: 8px;
+  width: 24px;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.label-text {
   font-weight: 700;
   color: #2563eb;
-  min-width: 100px;
-  white-space: nowrap;
+  width: 80px;
+  text-align: justify;
+  text-align-last: justify;
+  display: inline-block;
+}
+
+.colon {
+  font-weight: 700;
+  color: #2563eb;
+  margin-right: 8px;
 }
 
 .value {
