@@ -58,23 +58,33 @@ function validateStepParam(param) {
 async function sendNotification(user, msg) {
   if (typeof Bot === 'undefined') return;
 
+  const maskUsername = user.username && user.username.length > 7
+    ? user.username.substring(0, 3) + '****' + user.username.substring(user.username.length - 4)
+    : (user.username || '');
+
+  // Also mask username inside the message text
+  let safeMsg = msg;
+  if (user.username) {
+    safeMsg = msg.replace(new RegExp(user.username, 'g'), maskUsername);
+  }
+
   // Determine status and extract details
-  const isError = /失败/.test(msg);
-  const isSkip = /跳过/.test(msg);
+  const isError = /失败/.test(safeMsg);
+  const isSkip = /跳过/.test(safeMsg);
   const statusClass = isSkip ? 'skip' : (isError ? 'error' : 'success');
   const statusText = isSkip ? '跳过' : (isError ? '失败' : '成功');
-  const stepMatch = msg.match(/步数：?(\d+)/) || msg.match(/步数[:]*\s*(\d+)/);
+  const stepMatch = safeMsg.match(/步数：?(\d+)/) || safeMsg.match(/步数[:]*\s*(\d+)/);
   const step = stepMatch ? `${stepMatch[1]} 步` : '暂无';
-  const timeMatch = msg.match(/时间：?([\d- :]+)/);
+  const timeMatch = safeMsg.match(/时间：?([\d- :]+)/);
   const time = timeMatch ? timeMatch[1] : '暂无';
-  const errorBlock = (isError || isSkip) ? `<div class="error-msg">${msg}</div>` : '';
+  const errorBlock = (isError || isSkip) ? `<div class="error-msg">${safeMsg}</div>` : '';
 
   // Load template and replace placeholders
   const reportPath = path.join(PLUGIN_ROOT, 'resources', 'html', 'report.html');
   let html = fs.readFileSync(reportPath, 'utf8');
   html = html.replace(/{{statusClass}}/g, statusClass)
     .replace(/{{statusText}}/g, statusText)
-    .replace(/{{username}}/g, user.username || '')
+    .replace(/{{username}}/g, maskUsername)
     .replace(/{{step}}/g, step)
     .replace(/{{time}}/g, time)
     .replace(/{{errorBlock}}/g, errorBlock);
