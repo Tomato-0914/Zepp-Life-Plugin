@@ -3,7 +3,7 @@ import puppeteer from '../../../lib/puppeteer/puppeteer.js';
 import fs from 'fs';
 import path from 'path';
 import { UserStore } from '../components/userStore.js';
-import { getPluginRoot } from '../components/config.js';
+import ZeppConfig, { getPluginRoot } from '../components/config.js';
 
 const PLUGIN_ROOT = getPluginRoot();
 const packageJson = JSON.parse(fs.readFileSync(path.join(PLUGIN_ROOT, 'package.json'), 'utf8'));
@@ -91,12 +91,14 @@ export class ZeppSetting extends plugin {
       const pluginName = path.basename(PLUGIN_ROOT);
       const plgPath = `${process.cwd().replace(/\\/g, '/')}/plugins/${pluginName}`;
 
+      const scale = ZeppConfig.getDpiScale();
       const img = await puppeteer.screenshot('zepp-life-setting', {
         tplFile: htmlPath,
         type: 'jpeg',
         quality: 90,
         version: version,
         plgPath: plgPath,
+        scale: scale,
       });
 
       if (img) {

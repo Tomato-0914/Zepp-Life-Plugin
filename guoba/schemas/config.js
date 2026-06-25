@@ -35,5 +35,16 @@ export default [
       placeholder: "例如: https://siran002-zepp-proxy.hf.space",
     },
     bottomHelpMessage: "中转反代链接。推荐使用免费的 Hugging Face 部署的代理链接。",
+  },
+  {
+    field: "dpi",
+    label: "截图 DPI 比例",
+    component: "InputNumber",
+    required: true,
+    componentProps: {
+      min: 50,
+      max: 300,
+    },
+    bottomHelpMessage: "控制所有生成图片的分辨率缩放比例，范围 50 至 300。100 为标准 1x，200 为 2x 高清（默认），300 为 3x 超清。",
   }
 ];

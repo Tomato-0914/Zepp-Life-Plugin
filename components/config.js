@@ -108,6 +108,15 @@ class ZeppConfig {
     return lodash.get(this.config, realKey);
   }
 
+  getDpiScale() {
+    let dpi = Number(this.get('dpi'));
+    if (isNaN(dpi) || dpi < 50 || dpi > 300) {
+      dpi = 200;
+    }
+    return dpi / 100;
+  }
+
+
   set(key, value) {
     try {
       if (!fs.existsSync(this.configPath)) {

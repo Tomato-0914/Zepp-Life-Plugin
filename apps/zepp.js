@@ -99,12 +99,14 @@ async function sendNotification(user, msg) {
   const plgPath = `${process.cwd().replace(/\\\\/g, '/')}/plugins/${pluginName}`;
 
   try {
+    const scale = ZeppConfig.getDpiScale();
     const img = await puppeteer.screenshot('zepp-life-report', {
       tplFile: tempFile,
       type: 'jpeg',
       quality: 90,
       version: version,
       plgPath: plgPath,
+      scale: scale,
     });
     if (img) {
       // Send image to all targets
@@ -256,12 +258,14 @@ export class ZeppApp extends plugin {
     const plgPath = `${process.cwd().replace(/\\\\/g, '/')}/plugins/${pluginName}`;
 
     try {
+      const scale = ZeppConfig.getDpiScale();
       const img = await puppeteer.screenshot('zepp-life-status', {
         tplFile: tempFile,
         type: 'jpeg',
         quality: 90,
         version: version,
         plgPath: plgPath,
+        scale: scale,
       });
       if (img) {
         await e.reply(img);
