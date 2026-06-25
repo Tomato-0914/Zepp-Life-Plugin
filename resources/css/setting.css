@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -7,94 +5,76 @@
 }
 
 body {
-  font-family: 'Outfit', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #0b0f19; /* 极简深色背景，用于渲染边缘裁剪 */
-  color: #f1f5f9;
-  width: 750px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans CJK SC", sans-serif;
+  background-color: #f8fafc;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 40px 20px;
+  width: 750px;
+  padding: 30px;
 }
 
 .container {
+  background-color: #ffffff;
   width: 100%;
-  background: rgba(17, 24, 39, 0.75); /* 深色磨砂玻璃底色 */
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 28px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  padding: 45px 35px;
-  position: relative;
-  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  border: 1px solid #e2e8f0;
 }
 
-/* 渐变氛围光源 */
-.container::before {
-  content: '';
-  position: absolute;
-  top: -150px;
-  right: -150px;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(45, 212, 191, 0.1) 0%, rgba(45, 212, 191, 0) 70%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-.container::after {
-  content: '';
-  position: absolute;
-  bottom: -150px;
-  left: -150px;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 70%);
-  z-index: 0;
-  pointer-events: none;
-}
-
+/* Header */
 .header {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  margin-bottom: 40px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding-bottom: 30px;
+  width: 100%;
 }
 
-.header h1 {
-  font-size: 34px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #2dd4bf 0%, #0ea5e9 50%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 10px;
+.title-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.icon {
+  font-size: 26px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #3b82f6;
   letter-spacing: 1px;
 }
 
-.header p {
-  color: #94a3b8;
-  font-size: 15px;
-  font-weight: 400;
-  letter-spacing: 0.5px;
+.subtitle {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 16px;
 }
 
+.header .divider {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 70%, transparent 100%);
+  border-radius: 2px;
+}
+
+/* Group Box */
 .group-box {
-  position: relative;
-  z-index: 1;
-  margin-bottom: 35px;
+  width: 100%;
 }
 
 .group-title {
   font-size: 18px;
   font-weight: 700;
-  color: #38bdf8; /* 清爽青蓝色 */
-  margin-bottom: 20px;
-  padding-left: 12px;
-  border-left: 4px solid #0ea5e9;
-  letter-spacing: 0.5px;
+  color: #1e3a8a;
+  margin-bottom: 16px;
+  padding-left: 10px;
+  border-left: 4px solid #3b82f6;
 }
 
 .command-list {
@@ -104,72 +84,83 @@ body {
 }
 
 .command-item {
-  background: rgba(30, 41, 59, 0.35); /* 半透明悬浮卡片 */
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 20px 24px;
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.command-item:hover {
+  border-color: #cbd5e1;
+  background-color: #f1f5f9;
 }
 
 .command-row {
-  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .command-name {
-  font-size: 17px;
-  font-weight: 600;
-  color: #f8fafc;
-  letter-spacing: 0.3px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.command-badge {
+  font-size: 12px;
+  font-weight: 700;
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 4px 10px;
+  border-radius: 6px;
 }
 
 .command-desc {
   font-size: 14px;
-  color: #94a3b8;
-  line-height: 1.6;
-}
-
-.command-badge {
-  background: rgba(14, 165, 233, 0.1);
-  border: 1px solid rgba(14, 165, 233, 0.25);
-  color: #38bdf8;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 20px;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
+  color: #475569;
+  line-height: 1.5;
 }
 
 .command-example {
-  font-family: 'Fira Code', 'Courier New', Courier, monospace;
   font-size: 13px;
-  color: #2dd4bf; /* 绿底绿字改成清新薄荷绿 */
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  padding: 8px 14px;
-  border-radius: 8px;
-  width: 100%;
-  word-break: break-all;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.footer {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  margin-top: 40px;
+  font-family: Consolas, Monaco, monospace;
   color: #64748b;
-  font-size: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 25px;
+  background-color: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+  margin-top: 4px;
 }
 
-.footer span {
-  color: #0ea5e9;
+.command-item:hover .command-example {
+  background-color: #e2e8f0;
+}
+
+/* Footer */
+.footer {
+  width: 100%;
+}
+
+.footer .divider {
+  background: linear-gradient(90deg, transparent 0%, #e2e8f0 10%, #e2e8f0 90%, transparent 100%);
+  height: 1px;
+  margin-bottom: 15px;
+}
+
+.footer-text {
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+  font-weight: 500;
+}
+
+.footer-text span {
   font-weight: 600;
+  color: #3b82f6;
 }

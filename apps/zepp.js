@@ -63,9 +63,9 @@ async function sendNotification(user, msg) {
   const statusClass = isError ? 'error' : 'success';
   const statusText = isError ? '失败' : '成功';
   const stepMatch = msg.match(/步数：?(\d+)/) || msg.match(/步数[:]*\s*(\d+)/);
-  const step = stepMatch ? stepMatch[1] : '';
+  const step = stepMatch ? `${stepMatch[1]} 步` : '暂无';
   const timeMatch = msg.match(/时间：?([\d- :]+)/);
-  const time = timeMatch ? timeMatch[1] : '';
+  const time = timeMatch ? timeMatch[1] : '暂无';
   const errorBlock = isError ? `<div class="error-msg">${msg}</div>` : '';
 
   // Load template and replace placeholders
