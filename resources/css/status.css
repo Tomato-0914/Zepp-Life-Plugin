@@ -1,0 +1,162 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans CJK SC", sans-serif;
+  background-color: #f8fafc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 900px;
+  height: 520px;
+}
+
+.container {
+  background-color: #ffffff;
+  width: 100%;
+  height: 100%;
+  padding: 40px 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  width: 100%;
+}
+
+.title-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.icon {
+  font-size: 26px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #3b82f6;
+  letter-spacing: 1px;
+}
+
+.divider {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 70%, transparent 100%);
+  border-radius: 2px;
+}
+
+/* Main Content */
+.main-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-grow: 1;
+  margin-top: 25px;
+  margin-bottom: 25px;
+}
+
+.details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 60%;
+}
+
+.detail-item {
+  display: flex;
+  align-items: baseline;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.label {
+  font-weight: 700;
+  color: #2563eb;
+  min-width: 100px;
+  white-space: nowrap;
+}
+
+.value {
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.value.highlight {
+  color: #ef4444;
+}
+
+/* Avatar Box */
+.avatar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 30%;
+}
+
+.avatar-box {
+  width: 140px;
+  height: 140px;
+  border-radius: 12px;
+  border: 4px solid #eff6ff;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.15);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f1f5f9;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qq-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  background-color: #f1f5f9;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+/* Footer */
+.footer {
+  width: 100%;
+}
+
+.footer .divider {
+  background: linear-gradient(90deg, transparent 0%, #e2e8f0 10%, #e2e8f0 90%, transparent 100%);
+  height: 1px;
+  margin-bottom: 15px;
+}
+
+.tip-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.tip-icon {
+  font-size: 18px;
+}
+
+.tip-text {
+  color: #475569;
+  font-weight: 500;
+}

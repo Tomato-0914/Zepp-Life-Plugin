@@ -222,7 +222,49 @@ export class ZeppApp extends plugin {
     const pushGroupsText = user.pushGroups && user.pushGroups.length > 0 ? user.pushGroups.join(', ') : '无';
     const pushFriendsText = user.pushFriends && user.pushFriends.length > 0 ? user.pushFriends.join(', ') : '无';
 
-    await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 自动步数：${customStepText}\n📢 推送群聊：${pushGroupsText}\n📢 推送好友：${pushFriendsText}\n👟 上次同步：${user.lastStep || '暂无'} 步 (${user.lastTime || '尚未同步'})\n\n💡 提示：您可以使用 【#设置自动刷步时间 07:30】 来修改时间，使用 【#设置自动刷步数 15000-25000】 修改步数，或使用 【#设置自动推送群】/【#设置自动推送好友】配置推送目标。`);
+    const lastStep = `${user.lastStep || '暂无'} 步 (${user.lastTime || '尚未同步'})`;
+
+    // Load template and replace placeholders
+    const statusPath = path.join(PLUGIN_ROOT, 'resources', 'html', 'status.html');
+    let html = fs.readFileSync(statusPath, 'utf8');
+    html = html.replace(/{{username}}/g, maskUsername)
+      .replace(/{{autoStatus}}/g, autoStatus)
+      .replace(/{{customStepText}}/g, customStepText)
+      .replace(/{{pushGroupsText}}/g, pushGroupsText)
+      .replace(/{{pushFriendsText}}/g, pushFriendsText)
+      .replace(/{{lastStep}}/g, lastStep)
+      .replace(/{{qq}}/g, String(e.user_id));
+
+    // Write temporary html for screenshot
+    const tempDir = path.join(PLUGIN_ROOT, 'temp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    const tempFile = path.join(tempDir, `status_${Date.now()}.html`);
+    fs.writeFileSync(tempFile, html, 'utf8');
+
+    const pluginName = path.basename(PLUGIN_ROOT);
+    const plgPath = `${process.cwd().replace(/\\\\/g, '/')}/plugins/${pluginName}`;
+
+    try {
+      const img = await puppeteer.screenshot('zepp-life-status', {
+        tplFile: tempFile,
+        type: 'jpeg',
+        quality: 90,
+        version: version,
+        plgPath: plgPath,
+      });
+      if (img) {
+        await e.reply(img);
+      } else {
+        await e.reply('❌ 生成状态图片失败喵~');
+      }
+    } catch (err) {
+      logger.error(`[Zepp-Life-Plugin] 生成绑定状态图片失败: ${err.message}`);
+      // fallback to text
+      await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 自动步数：${customStepText}\n📢 推送群聊：${pushGroupsText}\n📢 推送好友：${pushFriendsText}\n👟 上次同步：${lastStep}\n\n💡 提示：您可以使用 【#刷步设置】配置推送与自动任务。`);
+    } finally {
+      // cleanup
+      try { fs.unlinkSync(tempFile); } catch (_) {}
+    }
     return true;
   }
 
