@@ -60,13 +60,14 @@ async function sendNotification(user, msg) {
 
   // Determine status and extract details
   const isError = /失败/.test(msg);
-  const statusClass = isError ? 'error' : 'success';
-  const statusText = isError ? '失败' : '成功';
+  const isSkip = /跳过/.test(msg);
+  const statusClass = isSkip ? 'skip' : (isError ? 'error' : 'success');
+  const statusText = isSkip ? '跳过' : (isError ? '失败' : '成功');
   const stepMatch = msg.match(/步数：?(\d+)/) || msg.match(/步数[:]*\s*(\d+)/);
   const step = stepMatch ? `${stepMatch[1]} 步` : '暂无';
   const timeMatch = msg.match(/时间：?([\d- :]+)/);
   const time = timeMatch ? timeMatch[1] : '暂无';
-  const errorBlock = isError ? `<div class="error-msg">${msg}</div>` : '';
+  const errorBlock = (isError || isSkip) ? `<div class="error-msg">${msg}</div>` : '';
 
   // Load template and replace placeholders
   const reportPath = path.join(PLUGIN_ROOT, 'resources', 'html', 'report.html');
@@ -98,11 +99,11 @@ async function sendNotification(user, msg) {
     if (img) {
       // Send image to all targets
       // 1. QQ本人
-      try { await Bot.pickUser(Number(user.qq)).sendMsg(img); } catch (_) {}
+      try { await Bot.pickUser(Number(user.qq)).sendMsg(img); } catch (_) { }
       // 2. 群聊
       if (Array.isArray(user.pushGroups)) {
         for (const group of user.pushGroups) {
-          try { await Bot.pickGroup(Number(group)).sendMsg(img); } catch (_) {}
+          try { await Bot.pickGroup(Number(group)).sendMsg(img); } catch (_) { }
           await new Promise(r => setTimeout(r, 1000));
         }
       }
@@ -110,7 +111,7 @@ async function sendNotification(user, msg) {
       if (Array.isArray(user.pushFriends)) {
         for (const friend of user.pushFriends) {
           if (Number(friend) === Number(user.qq)) continue;
-          try { await Bot.pickUser(Number(friend)).sendMsg(img); } catch (_) {}
+          try { await Bot.pickUser(Number(friend)).sendMsg(img); } catch (_) { }
           await new Promise(r => setTimeout(r, 1000));
         }
       }
@@ -118,10 +119,10 @@ async function sendNotification(user, msg) {
   } catch (e) {
     logger.warn(`[Zepp-Life-Plugin] 生成通知图片失败: ${e.message}`);
     // fallback to text
-    try { await Bot.pickUser(Number(user.qq)).sendMsg(msg); } catch (_) {}
+    try { await Bot.pickUser(Number(user.qq)).sendMsg(msg); } catch (_) { }
   } finally {
     // cleanup
-    try { fs.unlinkSync(tempFile); } catch (_) {}
+    try { fs.unlinkSync(tempFile); } catch (_) { }
   }
 }
 
@@ -171,7 +172,7 @@ export class ZeppApp extends plugin {
       priority: 1000,
       rule: [
         {
-          reg: /^#?(我的步数|查看步数)/i,
+          reg: /^#?我的刷步/i,
           fnc: 'viewStatus'
         },
         {
@@ -205,8 +206,8 @@ export class ZeppApp extends plugin {
       ? user.username.substring(0, 3) + '****' + user.username.substring(user.username.length - 4)
       : user.username;
 
-    const autoStatus = user.autoStep !== false 
-      ? `开启 (每日 ${user.time || '06:00'})` 
+    const autoStatus = user.autoStep !== false
+      ? `开启 (每日 ${user.time || '06:00'})`
       : '关闭';
 
     let customStepText = '随机生成';
@@ -263,7 +264,7 @@ export class ZeppApp extends plugin {
       await e.reply(`📋 Zepp Life 绑定状态：\n👤 账号：${maskUsername}\n⚙️ 自动刷步：${autoStatus}\n👟 自动步数：${customStepText}\n📢 推送群聊：${pushGroupsText}\n📢 推送好友：${pushFriendsText}\n👟 上次同步：${lastStep}\n\n💡 提示：您可以使用 【#刷步设置】配置推送与自动任务。`);
     } finally {
       // cleanup
-      try { fs.unlinkSync(tempFile); } catch (_) {}
+      try { fs.unlinkSync(tempFile); } catch (_) { }
     }
     return true;
   }
@@ -278,7 +279,7 @@ export class ZeppApp extends plugin {
 
     const reg = /^#?(刷步|修改步数)\s*(\d+)?/i;
     const match = e.msg.match(reg);
-    
+
     if (match && match[2]) {
       const step = parseInt(match[2]);
       await modifyStepBase(e, user, step, false);
@@ -651,7 +652,7 @@ export class ZeppApp extends plugin {
       if (step <= 0) {
         step = Math.floor(Math.random() * (maxStep - minStep + 1)) + minStep;
       }
-      
+
       if (step > 98800) step = 98800;
 
       // 如果当日已刷过步数且大于要刷的步数，为防止同步倒退失败
@@ -663,6 +664,7 @@ export class ZeppApp extends plugin {
           if (isFixed) {
             // 用户固定了步数，但小于或等于今日已刷步数，由于接口无法倒退，直接跳过此用户
             logger.info(`[Zepp-Life-Plugin] 自动刷步跳过: QQ ${user.qq} 的固定步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}`);
+            await sendNotification(user, `[Zepp-Life-Plugin] 每日自动刷步已跳过！\n👤 账号：${user.username}\n👟 步数：${step} 步\n❌ 原因：设定固定步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}\n⏰ 时间：${getTimeString()}`);
             continue;
           } else {
             // 随机步数或范围情况，自动生成一个略大的数以保证同步成功
