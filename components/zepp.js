@@ -14,22 +14,11 @@ class ZeppAPI {
     return encrypted;
   }
 
-  static getRandomIP() {
-    const getByte = () => Math.floor(Math.random() * 255) + 1;
-    let first = getByte();
-    while ([0, 10, 127].includes(first) || (first >= 224 && first <= 255)) {
-      first = getByte();
-    }
-    return `${first}.${getByte()}.${getByte()}.${getByte()}`;
-  }
 
   static async requests(url, data = '', apptoken = '') {
-    const fakeIp = this.getRandomIP();
     const headers = {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'User-Agent': 'MiFit6.14.0 (M2007J1SC; Android 12; Density/2.75)',
-      'X-Forwarded-For': fakeIp,
-      'Client-IP': fakeIp
+      'User-Agent': 'MiFit6.14.0 (M2007J1SC; Android 12; Density/2.75)'
     };
     if (apptoken) {
       headers['apptoken'] = apptoken;
@@ -71,7 +60,6 @@ class ZeppAPI {
     // 最多重试 3 次，指数退避应对 429 限流
     const MAX_RETRY = 3;
     for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
-      const fakeIp = this.getRandomIP();
       const res = await axios({
         url,
         method: 'POST',
@@ -82,9 +70,7 @@ class ZeppAPI {
           'appname': 'com.xiaomi.hm.health',
           'appplatform': 'android_phone',
           'x-hm-ekv': '1',
-          'hm-privacy-ceip': 'false',
-          'X-Forwarded-For': fakeIp,
-          'Client-IP': fakeIp
+          'hm-privacy-ceip': 'false'
         },
         data: cipherData,
         maxRedirects: 0,
@@ -146,7 +132,6 @@ class ZeppAPI {
 
     const MAX_RETRY = 3;
     for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
-      const fakeIp = this.getRandomIP();
       const headers = {
         'app_name': 'com.xiaomi.hm.health',
         'x-request-id': crypto.randomUUID(),
@@ -155,9 +140,7 @@ class ZeppAPI {
         'cv': '50818_6.14.0',
         'v': '2.0',
         'appplatform': 'android_phone',
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'X-Forwarded-For': fakeIp,
-        'Client-IP': fakeIp
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
       };
 
       const res = await axios({
