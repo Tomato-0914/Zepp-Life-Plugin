@@ -105,7 +105,8 @@ export class ZeppLogin extends plugin {
         time: '06:00',
         appToken: tokenInfo.appToken,
         userId: tokenInfo.userId,
-        tokenTime: Date.now()
+        tokenTime: Date.now(),
+        deviceId: tokenInfo.deviceId
       });
 
       await e.reply('✅ 验证通过，账号绑定成功！');

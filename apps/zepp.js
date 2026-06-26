@@ -156,7 +156,7 @@ async function modifyStepBase(e, user, step, isRandom = false) {
   await e.reply(`🔄 正在同步${msgType}为 ${step} 步，请稍候...`);
 
   // 传入缓存 Token 避免每次重复登录触发 429 限流
-  const cachedToken = { appToken: user.appToken, userId: user.userId, tokenTime: user.tokenTime };
+  const cachedToken = { appToken: user.appToken, userId: user.userId, tokenTime: user.tokenTime, deviceId: user.deviceId };
   const res = await ZeppAPI.run(user.username, user.password, step, cachedToken);
   if (res.success) {
     const nowTimeStr = getTimeString();
@@ -166,6 +166,7 @@ async function modifyStepBase(e, user, step, isRandom = false) {
       saveData.appToken = res.newToken.appToken;
       saveData.userId = res.newToken.userId;
       saveData.tokenTime = res.newToken.tokenTime;
+      saveData.deviceId = res.newToken.deviceId;
     }
     UserStore.saveUser(e.user_id, saveData);
     await e.reply(`✅ 步数修改成功！\n当前步数：${step}\n请打开微信运动或支付宝运动查看是否同步刷新喵~`);
@@ -691,7 +692,7 @@ export class ZeppApp extends plugin {
       logger.info(`[Zepp-Life-Plugin] 自动刷步：正在同步 QQ ${user.qq} -> ${step} 步`);
 
       // 传入缓存 Token 避免每次重复登录触发 429 限流
-      const cachedToken = { appToken: user.appToken, userId: user.userId, tokenTime: user.tokenTime };
+      const cachedToken = { appToken: user.appToken, userId: user.userId, tokenTime: user.tokenTime, deviceId: user.deviceId };
       const res = await ZeppAPI.run(user.username, user.password, step, cachedToken);
       if (res.success) {
         const saveData = { lastStep: step, lastTime: getTimeString() };
@@ -700,6 +701,7 @@ export class ZeppApp extends plugin {
           saveData.appToken = res.newToken.appToken;
           saveData.userId = res.newToken.userId;
           saveData.tokenTime = res.newToken.tokenTime;
+          saveData.deviceId = res.newToken.deviceId;
         }
         UserStore.saveUser(user.qq, saveData);
         logger.info(`[Zepp-Life-Plugin] 自动刷步成功: QQ ${user.qq} -> ${step} 步`);

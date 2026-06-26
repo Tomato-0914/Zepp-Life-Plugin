@@ -2,6 +2,54 @@ import axios from 'axios';
 import qs from 'qs';
 import crypto from 'crypto';
 import ZeppConfig from './config.js';
+import { TEMPLATE_DATA_HR, TEMPLATE_VALUE } from './payload_template.js';
+
+function getScaledValue(targetSteps) {
+  const buf = Buffer.from(TEMPLATE_VALUE, 'base64');
+  const templateSum = 7255;
+  const scale = targetSteps / templateSum;
+  
+  let currentSum = 0;
+  // First pass: scale values
+  for (let i = 0; i < buf.length; i += 3) {
+    if (buf[i+1] > 0) {
+      let newVal = Math.round(buf[i+1] * scale);
+      if (newVal < 1) newVal = 1;
+      if (newVal > 255) newVal = 255;
+      buf[i+1] = newVal;
+      currentSum += newVal;
+    }
+  }
+  
+  // Second pass: adjust the difference due to rounding errors
+  let diff = targetSteps - currentSum;
+  if (diff !== 0) {
+    const activeIndices = [];
+    for (let i = 0; i < buf.length; i += 3) {
+      if (buf[i+1] > 0) {
+        activeIndices.push(i + 1);
+      }
+    }
+    
+    const stepDirection = diff > 0 ? 1 : -1;
+    let idx = 0;
+    while (diff !== 0 && activeIndices.length > 0) {
+      const targetIdx = activeIndices[idx % activeIndices.length];
+      const val = buf[targetIdx];
+      if (stepDirection === 1 && val < 255) {
+        buf[targetIdx]++;
+        diff--;
+      } else if (stepDirection === -1 && val > 1) {
+        buf[targetIdx]--;
+        diff++;
+      }
+      idx++;
+      if (idx > activeIndices.length * 10) break;
+    }
+  }
+  
+  return buf.toString('base64');
+}
 
 const HM_AES_KEY = 'xeNtBVqzDc6tuNTh';
 const HM_AES_IV = 'MAAAYAAAAAAAAABg';
@@ -106,21 +154,21 @@ class ZeppAPI {
     }
   }
 
-  static async getToken(username, accessCode) {
+  static async getToken(username, accessCode, deviceId = null) {
     let url = 'https://account.huami.com/v2/client/login';
     const useProxy = ZeppConfig.get('useProxy');
     const apiProxy = ZeppConfig.get('apiProxy');
     if (useProxy && apiProxy) {
       url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
     }
-    const deviceId = crypto.randomUUID();
+    const finalDeviceId = deviceId || crypto.randomUUID().toUpperCase();
     const data = {
       'allow_registration': 'false',
       'app_name': 'com.xiaomi.hm.health',
       'app_version': '6.14.0',
       'code': accessCode,
       'country_code': 'CN',
-      'device_id': deviceId,
+      'device_id': finalDeviceId,
       'device_model': 'android_phone',
       'dn': 'account.zepp.com,api-user.zepp.com,api-mifit.zepp.com,api-watch.zepp.com,app-analytics.zepp.com,api-analytics.huami.com,auth.zepp.com',
       'grant_type': 'access_token',
@@ -171,7 +219,8 @@ class ZeppAPI {
 
       return {
         userId: tokenInfo.user_id,
-        appToken: tokenInfo.app_token
+        appToken: tokenInfo.app_token,
+        deviceId: finalDeviceId
       };
     }
   }
@@ -237,13 +286,13 @@ class ZeppAPI {
 
     const dataJsonObj = [
       {
-        data_hr: "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        data_hr: TEMPLATE_DATA_HR,
         date: dateStr,
         data: [
           {
             start: 0,
             stop: 1439,
-            value: Number(step),
+            value: getScaledValue(Number(step)),
             tz: 32,
             did: "DA932FFFFE8816E7",
             src: 24
@@ -315,6 +364,7 @@ class ZeppAPI {
     let appToken = cachedToken?.appToken;
     let userId = cachedToken?.userId;
     const tokenTime = cachedToken?.tokenTime || 0;
+    let deviceId = cachedToken?.deviceId || crypto.randomUUID().toUpperCase();
     const tokenExpired = !appToken || !userId || (Date.now() - tokenTime > TOKEN_TTL_MS);
 
     // 需要重新登录的情况：Token 不存在或已过期
@@ -322,9 +372,10 @@ class ZeppAPI {
       try {
         logger.info(`[Zepp-Life-Plugin] Token 不存在或已过期，重新登录: ${username}`);
         const accessCode = await this.getAccessCode(username, password);
-        const tokenInfo = await this.getToken(username, accessCode);
+        const tokenInfo = await this.getToken(username, accessCode, deviceId);
         appToken = tokenInfo.appToken;
         userId = tokenInfo.userId;
+        deviceId = tokenInfo.deviceId;
       } catch (err) {
         return { success: false, error: `登录失败: ${err.message}`, newToken: null };
       }
@@ -336,7 +387,7 @@ class ZeppAPI {
       return {
         success: true,
         steps: step,
-        newToken: { appToken, userId, tokenTime: tokenExpired ? Date.now() : tokenTime }
+        newToken: { appToken, userId, tokenTime: tokenExpired ? Date.now() : tokenTime, deviceId }
       };
     } catch (err) {
       // Token 可能失效，尝试强制重新登录一次
@@ -344,14 +395,15 @@ class ZeppAPI {
         logger.warn(`[Zepp-Life-Plugin] 使用缓存 Token 失败，尝试重新登录: ${err.message}`);
         try {
           const accessCode = await this.getAccessCode(username, password);
-          const tokenInfo = await this.getToken(username, accessCode);
+          const tokenInfo = await this.getToken(username, accessCode, deviceId);
           appToken = tokenInfo.appToken;
           userId = tokenInfo.userId;
+          deviceId = tokenInfo.deviceId;
           await this.changeStep(userId, appToken, step);
           return {
             success: true,
             steps: step,
-            newToken: { appToken, userId, tokenTime: Date.now() }
+            newToken: { appToken, userId, tokenTime: Date.now(), deviceId }
           };
         } catch (retryErr) {
           return { success: false, error: retryErr.message, newToken: null };

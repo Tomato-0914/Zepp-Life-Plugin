@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { getPluginRoot } from './config.js';
 import YAML from 'yaml';
+import crypto from 'crypto';
 
 const dataDir = path.join(getPluginRoot(), 'data');
 
@@ -40,7 +41,8 @@ export class UserStore {
         // 缓存登录Token，避免频繁登录触发 429
         appToken: data.appToken !== undefined ? data.appToken : (existing.appToken || ''),
         userId: data.userId !== undefined ? data.userId : (existing.userId || ''),
-        tokenTime: data.tokenTime !== undefined ? data.tokenTime : (existing.tokenTime || 0)
+        tokenTime: data.tokenTime !== undefined ? data.tokenTime : (existing.tokenTime || 0),
+        deviceId: data.deviceId !== undefined ? data.deviceId : (existing.deviceId || crypto.randomUUID().toUpperCase())
       };
       fs.writeFileSync(filePath, YAML.stringify(merged), 'utf8');
       return true;
