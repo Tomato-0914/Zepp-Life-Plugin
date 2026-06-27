@@ -3,7 +3,7 @@ import { getPluginRoot } from '../components/config.js';
 
 export default {
   name: "Zepp-Life-Plugin",
-  title: "Zepp-Life-Plugin",
+  title: "刷步插件(zepplife)",
   author: "Tomato-0914",
   authorLink: "https://github.com/Tomato-0914",
   link: "https://github.com/Tomato-0914/Zepp-Life-Plugin",
