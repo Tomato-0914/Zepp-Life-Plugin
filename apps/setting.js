@@ -4,43 +4,15 @@ import fs from 'fs';
 import path from 'path';
 import { UserStore } from '../components/userStore.js';
 import ZeppConfig, { getPluginRoot } from '../components/config.js';
+import { version, validateStepParam, normalizeTime, getPlgPath } from '../components/utils.js';
 
 const PLUGIN_ROOT = getPluginRoot();
-const packageJson = JSON.parse(fs.readFileSync(path.join(PLUGIN_ROOT, 'package.json'), 'utf8'));
-const version = packageJson.version;
 
-function validateStepParam(param) {
-  const p = param.trim();
-  if (p === '0') {
-    return { valid: true, value: 0 };
-  }
-
-  // 检查是否为范围如 15000-25000
-  const rangeMatch = p.match(/^(\d+)\s*-\s*(\d+)$/);
-  if (rangeMatch) {
-    const min = parseInt(rangeMatch[1]);
-    const max = parseInt(rangeMatch[2]);
-    if (min < 0 || min > 98800 || max < 0 || max > 98800) {
-      return { valid: false, error: '输入错误，自动步数上下限均不能超过 98,800 步喵~' };
-    }
-    if (min > max) {
-      return { valid: false, error: '范围无效，最小值不能大于最大值喵~' };
-    }
-    return { valid: true, value: `${min}-${max}` };
-  }
-
-  // 检查是否为单个正整数
-  const singleMatch = p.match(/^(\d+)$/);
-  if (singleMatch) {
-    const val = parseInt(singleMatch[1]);
-    if (val < 0 || val > 98800) {
-      return { valid: false, error: '输入错误，步数数值需在 0 到 98,800 之间喵~' };
-    }
-    return { valid: true, value: val };
-  }
-
-  return { valid: false, error: '格式错误。请输入单个数字(如 20000)或步数范围(如 15000-25000)，输入 0 代表清除固定步数。' };
-}
+const TOGGLE_AUTO_REG = /^#?刷步设置自动刷步\s*(开启|关闭)?$/i;
+const AUTO_TIME_REG = /^#?刷步设置自动刷步时间\s*(.*)$/i;
+const AUTO_STEP_REG = /^#?刷步设置自动刷步(?:数|步数)\s*(.*)$/i;
+const PUSH_GROUPS_REG = /^#?刷步设置(?:自动)?推送群\s*(.*)$/i;
+const PUSH_FRIENDS_REG = /^#?刷步设置(?:自动)?推送好友\s*(.*)$/i;
 
 export class ZeppSetting extends plugin {
   constructor() {
@@ -55,23 +27,23 @@ export class ZeppSetting extends plugin {
           fnc: 'settingsHelp'
         },
         {
-          reg: /^#?刷步设置自动刷步\s*(开启|关闭|)?$/i,
+          reg: TOGGLE_AUTO_REG,
           fnc: 'toggleAutoStep'
         },
         {
-          reg: /^#?刷步设置自动刷步时间\s*(\d{1,2})[：:](\d{1,2})$/i,
+          reg: AUTO_TIME_REG,
           fnc: 'changeAutoTime'
         },
         {
-          reg: /^#?刷步设置自动刷步(数|步数)\s*(.*)?$/i,
+          reg: AUTO_STEP_REG,
           fnc: 'setAutoStepCount'
         },
         {
-          reg: /^#?刷步设置推送群\s*(.*)?$/i,
+          reg: PUSH_GROUPS_REG,
           fnc: 'setAutoPushGroups'
         },
         {
-          reg: /^#?刷步设置自动推送好友\s*(.*)?$/i,
+          reg: PUSH_FRIENDS_REG,
           fnc: 'setAutoPushFriends'
         }
       ]
@@ -88,17 +60,13 @@ export class ZeppSetting extends plugin {
     }
 
     try {
-      const pluginName = path.basename(PLUGIN_ROOT);
-      const plgPath = `${process.cwd().replace(/\\/g, '/')}/plugins/${pluginName}`;
-
-      const scale = ZeppConfig.getDpiScale();
       const img = await puppeteer.screenshot('zepp-life-setting', {
         tplFile: htmlPath,
         type: 'jpeg',
         quality: 90,
-        version: version,
-        plgPath: plgPath,
-        scale: scale,
+        version,
+        plgPath: getPlgPath(),
+        scale: ZeppConfig.getDpiScale(),
       });
 
       if (img) {
@@ -121,17 +89,14 @@ export class ZeppSetting extends plugin {
       return true;
     }
 
-    const reg = /^#?刷步设置自动刷步\s*(开启|关闭|)?$/i;
-    const match = e.msg.match(reg);
-    let auto = true;
+    const match = e.msg.match(TOGGLE_AUTO_REG);
+    let auto;
 
     if (match && match[1]) {
-      const mode = match[1].trim();
-      if (mode === '关闭') {
-        auto = false;
-      }
+      auto = match[1] === '开启';
     } else {
-      auto = user.autoStep === false;
+      // 不带参数时切换开关状态
+      auto = user.autoStep !== true;
     }
 
     UserStore.saveUser(e.user_id, { autoStep: auto });
@@ -147,20 +112,13 @@ export class ZeppSetting extends plugin {
       return true;
     }
 
-    const reg = /^#?刷步设置自动刷步时间\s*(\d{1,2})[：:](\d{1,2})$/i;
-    const match = e.msg.match(reg);
-    if (!match) return false;
+    const match = e.msg.match(AUTO_TIME_REG);
+    const timeStr = normalizeTime(match ? match[1] : '');
 
-    let hour = parseInt(match[1]);
-    let minute = parseInt(match[2]);
-
-    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-      await e.reply('❎ 时间格式错误，小时范围为 0-23，分钟范围为 0-59。');
+    if (!timeStr) {
+      await e.reply('❎ 时间格式错误，请使用 时:分 格式（小时 0-23，分钟 0-59），例如：#刷步设置自动刷步时间 07:30');
       return true;
     }
-
-    const pad = (num) => String(num).padStart(2, '0');
-    const timeStr = `${pad(hour)}:${pad(minute)}`;
 
     UserStore.saveUser(e.user_id, { time: timeStr });
     await e.reply(`✅ 已成功将每日自动刷步时间设置为每天【${timeStr}】。`);
@@ -175,9 +133,8 @@ export class ZeppSetting extends plugin {
       return true;
     }
 
-    const reg = /^#?刷步设置自动刷步(数|步数)\s*(.*)?$/i;
-    const match = e.msg.match(reg);
-    const rawParam = match && match[2] ? match[2].trim() : '';
+    const match = e.msg.match(AUTO_STEP_REG);
+    const rawParam = match && match[1] ? match[1].trim() : '';
 
     if (rawParam) {
       const res = validateStepParam(rawParam);
@@ -246,13 +203,12 @@ export class ZeppSetting extends plugin {
       return true;
     }
 
-    const reg = /^#?刷步设置推送群\s*(.*)?$/i;
-    const match = e.msg.match(reg);
+    const match = e.msg.match(PUSH_GROUPS_REG);
     const rawParam = match && match[1] ? match[1].trim() : '';
 
     // 如果在群聊中发送且没有带参数，则将当前群加入或移出推送列表
     if (e.isGroup && !rawParam) {
-      let pushGroups = user.pushGroups || [];
+      let pushGroups = [...(user.pushGroups || [])].map(String);
       const currentGroup = String(e.group_id);
       if (pushGroups.includes(currentGroup)) {
         pushGroups = pushGroups.filter(g => g !== currentGroup);
@@ -338,8 +294,7 @@ export class ZeppSetting extends plugin {
       return true;
     }
 
-    const reg = /^#?刷步设置自动推送好友\s*(.*)?$/i;
-    const match = e.msg.match(reg);
+    const match = e.msg.match(PUSH_FRIENDS_REG);
     const rawParam = match && match[1] ? match[1].trim() : '';
 
     if (rawParam) {

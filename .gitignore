@@ -134,3 +134,8 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Zepp-Life-Plugin 运行时数据（含明文账号密码与 Token，切勿提交）
+/data/
+/config/config/
+/temp/

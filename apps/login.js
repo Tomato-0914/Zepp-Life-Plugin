@@ -17,7 +17,7 @@ export class ZeppLogin extends plugin {
           fnc: 'bindAccount'
         },
         {
-          reg: /^#?(zepp|刷步)解绑/i,
+          reg: /^#?(zepp|刷步)解绑$/i,
           fnc: 'unbindAccount'
         }
       ]
@@ -94,20 +94,25 @@ export class ZeppLogin extends plugin {
     await e.reply('🔄 正在登录 Zepp Life ，请稍候...');
 
     try {
-      const accessCode = await ZeppAPI.getAccessCode(username, password);
-      const tokenInfo = await ZeppAPI.getToken(username, accessCode);
+      const existing = UserStore.getUser(e.user_id);
+      const tokenInfo = await ZeppAPI.login(username, password, existing?.deviceId);
 
       // 保存绑定数据，并缓存 Token 避免首次刷步重复登录
-      UserStore.saveUser(e.user_id, {
+      // 重新绑定时保留原有的自动刷步与推送设置（新用户由 UserStore 填充默认值）
+      const saveData = {
         username,
         password,
-        autoStep: false,
-        time: '06:00',
         appToken: tokenInfo.appToken,
         userId: tokenInfo.userId,
-        tokenTime: Date.now(),
+        tokenTime: tokenInfo.tokenTime,
         deviceId: tokenInfo.deviceId
-      });
+      };
+      // 换绑了其它账号：清除旧账号的当日同步记录，避免误判步数倒退
+      if (existing && existing.username !== username) {
+        saveData.lastStep = 0;
+        saveData.lastTime = '';
+      }
+      UserStore.saveUser(e.user_id, saveData);
 
       await e.reply('✅ 验证通过，账号绑定成功！');
     } catch (err) {

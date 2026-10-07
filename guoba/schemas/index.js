@@ -3,6 +3,7 @@ import { UserStore } from "../../components/userStore.js";
 import configSchema from "./config.js";
 import usersSchema from "./users.js";
 import lodash from "lodash";
+import { normalizeTime, validateStepParam } from "../../components/utils.js";
 
 export const schemas = [
   ...configSchema,
@@ -14,7 +15,7 @@ export function getConfigData() {
     qq: String(u.qq || ''),
     username: u.username || '',
     password: u.password || '',
-    autoStep: u.autoStep !== false,
+    autoStep: u.autoStep === true,
     time: u.time || '06:00',
     step: u.step || 0,
     pushGroups: u.pushGroups || [],
@@ -37,7 +38,47 @@ export function getConfigData() {
 
 export function setConfigData(data, { Result }) {
   try {
-    // 1. 保存全局配置
+    // 1. 先校验所有数据，任一项不合法则整体拒绝保存
+    if (data.minStep !== undefined && data.maxStep !== undefined && Number(data.minStep) > Number(data.maxStep)) {
+      return Result.error({}, "保存失败：随机最小步数不能大于随机最大步数");
+    }
+
+    const users = lodash.get(data, 'usersData.users');
+    const normalizedUsers = [];
+    if (Array.isArray(users)) {
+      for (const u of users) {
+        const qq = String(u.qq ?? '').trim();
+        if (!qq) continue;
+
+        const time = normalizeTime(u.time || '06:00');
+        if (!time) {
+          return Result.error({}, `保存失败：QQ ${qq} 的自动刷步时间「${u.time}」格式错误，应为 HH:MM（如 06:00）`);
+        }
+
+        let step = 0;
+        const rawStep = String(u.step ?? '').trim();
+        if (rawStep) {
+          const res = validateStepParam(rawStep);
+          if (!res.valid) {
+            return Result.error({}, `保存失败：QQ ${qq} 的自动刷步步数「${rawStep}」无效。${res.error}`);
+          }
+          step = res.value;
+        }
+
+        normalizedUsers.push({
+          qq,
+          username: String(u.username || '').trim(),
+          password: u.password || '',
+          autoStep: u.autoStep === true,
+          time,
+          step,
+          pushGroups: Array.isArray(u.pushGroups) ? u.pushGroups.map(String) : [],
+          pushFriends: Array.isArray(u.pushFriends) ? u.pushFriends.map(String) : []
+        });
+      }
+    }
+
+    // 2. 保存全局配置
     if (data.minStep !== undefined) {
       ZeppConfig.set('minStep', Number(data.minStep));
     }
@@ -54,37 +95,24 @@ export function setConfigData(data, { Result }) {
       ZeppConfig.set('dpi', Number(data.dpi));
     }
 
-    // 2. 保存用户列表配置
-    const users = lodash.get(data, 'usersData.users');
-    if (users !== undefined && Array.isArray(users)) {
-      const activeQQs = new Set(users.map(u => String(u.qq).trim()).filter(qq => qq));
-      
-      // 保存/更新提交的用户配置
-      for (const u of users) {
-        const qq = String(u.qq).trim();
-        if (!qq) continue;
+    // 3. 保存用户列表配置
+    if (Array.isArray(users)) {
+      const activeQQs = new Set(normalizedUsers.map(u => u.qq));
 
-        let stepVal = u.step;
-        if (typeof stepVal === 'string') {
-          stepVal = stepVal.trim();
-          if (/^\d+$/.test(stepVal)) {
-            stepVal = Number(stepVal);
+      for (const { qq, ...saveData } of normalizedUsers) {
+        const existing = UserStore.getUser(qq);
+        if (existing) {
+          // 更换了账号或密码：清除 Token 缓存，强制用新账密重新登录，避免步数刷到旧账号
+          if (existing.username !== saveData.username || existing.password !== saveData.password) {
+            Object.assign(saveData, { appToken: '', userId: '', tokenTime: 0 });
           }
-        } else if (typeof stepVal !== 'number') {
-          stepVal = 0;
+          // 更换了账号：清除旧账号的当日同步记录
+          if (existing.username !== saveData.username) {
+            Object.assign(saveData, { lastStep: 0, lastTime: '' });
+          }
         }
-
-        UserStore.saveUser(qq, {
-          username: u.username || '',
-          password: u.password || '',
-          autoStep: u.autoStep !== false,
-          time: u.time || '06:00',
-          step: stepVal,
-          pushGroups: u.pushGroups || [],
-          pushFriends: u.pushFriends || [],
-          lastStep: u.lastStep || 0,
-          lastTime: u.lastTime || ''
-        });
+        // lastStep / lastTime 为只读字段，不使用面板提交的旧值覆盖，避免冲掉面板打开期间自动刷步写入的最新记录
+        UserStore.saveUser(qq, saveData);
       }
 
       // 删除在锅巴列表里被移除的用户

@@ -3,52 +3,74 @@ import qs from 'qs';
 import crypto from 'crypto';
 import ZeppConfig from './config.js';
 import { TEMPLATE_DATA_HR, TEMPLATE_VALUE } from './payload_template.js';
+import { getTodayDateString } from './utils.js';
+
+// 模板中每分钟数据为 3 字节：[活动类型, 步数, 保留]
+const MAX_STEPS_PER_MINUTE = 255;
+const WALK_MODE = 0x50;
+// 模板中无步数、可在步数过大时启用的步行/活动分钟类型（不含睡眠与无数据分钟）
+const SPARE_MODES = new Set([0x50, 0x59, 0x5a, 0x5b]);
 
 function getScaledValue(targetSteps) {
   const buf = Buffer.from(TEMPLATE_VALUE, 'base64');
-  const templateSum = 7255;
-  const scale = targetSteps / templateSum;
-  
-  let currentSum = 0;
-  // First pass: scale values
-  for (let i = 0; i < buf.length; i += 3) {
-    if (buf[i+1] > 0) {
-      let newVal = Math.round(buf[i+1] * scale);
-      if (newVal < 1) newVal = 1;
-      if (newVal > 255) newVal = 255;
-      buf[i+1] = newVal;
-      currentSum += newVal;
+  const active = [];
+  const spare = [];
+  let templateSum = 0;
+  for (let i = 0; i + 2 < buf.length; i += 3) {
+    if (buf[i + 1] > 0) {
+      active.push(i + 1);
+      templateSum += buf[i + 1];
+    } else if (SPARE_MODES.has(buf[i])) {
+      spare.push(i + 1);
     }
   }
-  
+
+  // First pass: scale values
+  const scale = targetSteps / templateSum;
+  let currentSum = 0;
+  for (const idx of active) {
+    const newVal = Math.min(MAX_STEPS_PER_MINUTE, Math.round(buf[idx] * scale));
+    buf[idx] = newVal;
+    currentSum += newVal;
+  }
+
+  // 目标步数超过已有活动分钟的承载上限时，启用空闲的步行分钟，保证分钟明细之和与总步数一致
+  for (const idx of spare) {
+    if (active.length * MAX_STEPS_PER_MINUTE >= targetSteps) break;
+    buf[idx - 1] = WALK_MODE;
+    active.push(idx);
+  }
+
   // Second pass: adjust the difference due to rounding errors
   let diff = targetSteps - currentSum;
-  if (diff !== 0) {
-    const activeIndices = [];
-    for (let i = 0; i < buf.length; i += 3) {
-      if (buf[i+1] > 0) {
-        activeIndices.push(i + 1);
-      }
-    }
-    
-    const stepDirection = diff > 0 ? 1 : -1;
-    let idx = 0;
-    while (diff !== 0 && activeIndices.length > 0) {
-      const targetIdx = activeIndices[idx % activeIndices.length];
-      const val = buf[targetIdx];
-      if (stepDirection === 1 && val < 255) {
-        buf[targetIdx]++;
+  while (diff !== 0) {
+    let changed = false;
+    for (const idx of active) {
+      if (diff > 0 && buf[idx] < MAX_STEPS_PER_MINUTE) {
+        buf[idx]++;
         diff--;
-      } else if (stepDirection === -1 && val > 1) {
-        buf[targetIdx]--;
+        changed = true;
+      } else if (diff < 0 && buf[idx] > 0) {
+        buf[idx]--;
         diff++;
+        changed = true;
       }
-      idx++;
-      if (idx > activeIndices.length * 10) break;
+      if (diff === 0) break;
     }
+    if (!changed) break;
   }
-  
+
   return buf.toString('base64');
+}
+
+// 开启中转代理时，将请求地址改写为代理地址
+function proxify(url) {
+  const useProxy = ZeppConfig.get('useProxy');
+  const apiProxy = ZeppConfig.get('apiProxy');
+  if (useProxy && apiProxy) {
+    return `${String(apiProxy).replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
+  }
+  return url;
 }
 
 const HM_AES_KEY = 'xeNtBVqzDc6tuNTh';
@@ -86,12 +108,7 @@ class ZeppAPI {
   }
 
   static async getAccessCode(username, password) {
-    let url = 'https://api-user.zepp.com/v2/registrations/tokens';
-    const useProxy = ZeppConfig.get('useProxy');
-    const apiProxy = ZeppConfig.get('apiProxy');
-    if (useProxy && apiProxy) {
-      url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
-    }
+    const url = proxify('https://api-user.zepp.com/v2/registrations/tokens');
     const loginData = {
       'emailOrPhone': username,
       'password': password,
@@ -122,6 +139,7 @@ class ZeppAPI {
         },
         data: cipherData,
         maxRedirects: 0,
+        timeout: 15000,
         validateStatus: () => true
       });
 
@@ -155,12 +173,7 @@ class ZeppAPI {
   }
 
   static async getToken(username, accessCode, deviceId = null) {
-    let url = 'https://account.huami.com/v2/client/login';
-    const useProxy = ZeppConfig.get('useProxy');
-    const apiProxy = ZeppConfig.get('apiProxy');
-    if (useProxy && apiProxy) {
-      url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
-    }
+    const url = proxify('https://account.huami.com/v2/client/login');
     const finalDeviceId = deviceId || crypto.randomUUID().toUpperCase();
     const data = {
       'allow_registration': 'false',
@@ -228,13 +241,7 @@ class ZeppAPI {
 
   static async changeStep(userId, appToken, step) {
     // Force UTC+8 (China Standard Time)
-    const date = new Date(new Date().getTime() + (8 * 60 * 60 * 1000) + new Date().getTimezoneOffset() * 60 * 1000);
-    const year = date.getFullYear();
-    let month = date.getMonth() + 1;
-    let strDate = date.getDate();
-    if (month < 10) month = `0${month}`;
-    if (strDate < 10) strDate = `0${strDate}`;
-    const dateStr = `${year}-${month}-${strDate}`;
+    const dateStr = getTodayDateString();
 
     const t = String(Math.floor(Date.now() / 1000));
     const timestamp = Date.now();
@@ -319,12 +326,7 @@ class ZeppAPI {
     ];
 
     const promises = hosts.map(async (host) => {
-      let url = `https://${host}/v1/data/band_data.json?t=${timestamp}`;
-      const useProxy = ZeppConfig.get('useProxy');
-      const apiProxy = ZeppConfig.get('apiProxy');
-      if (useProxy && apiProxy) {
-        url = `${apiProxy.replace(/\/$/, '')}/?target=${encodeURIComponent(url)}`;
-      }
+      const url = proxify(`https://${host}/v1/data/band_data.json?t=${timestamp}`);
       try {
         const res = await this.requests(url, postData, appToken);
         if (res.data?.code == '1' || res.data?.message === 'success' || res.data?.code === 1) {
@@ -348,68 +350,63 @@ class ZeppAPI {
     }
   }
 
+  static async login(username, password, deviceId) {
+    const accessCode = await this.getAccessCode(username, password);
+    const tokenInfo = await this.getToken(username, accessCode, deviceId);
+    return { ...tokenInfo, tokenTime: Date.now() };
+  }
+
   /**
    * Token 有效期：23 小时（华米 Token 通常 30 天有效，保守设为 23h 避免长期不刷步时的过期）
-   * 每次刷步优先复用缓存 Token，失败(401/403)后自动重新登录
+   * 每次刷步优先复用缓存 Token，失败后自动重新登录重试一次
    * @param {string} username
    * @param {string} password
    * @param {number} step
-   * @param {object|null} cachedToken - { appToken, userId, tokenTime } from UserStore
-   * @returns {{ success, steps, newToken }}
+   * @param {object|null} cachedToken - { appToken, userId, tokenTime, deviceId } from UserStore
+   * @returns {{ success, steps, error, newToken }} 只要重新登录成功，newToken 即为新 Token（即使刷步失败也应保存）
    */
   static async run(username, password, step, cachedToken = null) {
     // Token 缓存有效期 23 小时（毫秒）
     const TOKEN_TTL_MS = 23 * 60 * 60 * 1000;
 
-    let appToken = cachedToken?.appToken;
-    let userId = cachedToken?.userId;
-    const tokenTime = cachedToken?.tokenTime || 0;
-    let deviceId = cachedToken?.deviceId || crypto.randomUUID().toUpperCase();
-    const tokenExpired = !appToken || !userId || (Date.now() - tokenTime > TOKEN_TTL_MS);
+    const deviceId = cachedToken?.deviceId || crypto.randomUUID().toUpperCase();
+    const cacheValid = !!(cachedToken?.appToken && cachedToken?.userId) &&
+      (Date.now() - (cachedToken.tokenTime || 0) <= TOKEN_TTL_MS);
 
-    // 需要重新登录的情况：Token 不存在或已过期
-    if (tokenExpired) {
+    let token;
+    if (cacheValid) {
+      token = { appToken: cachedToken.appToken, userId: cachedToken.userId, tokenTime: cachedToken.tokenTime, deviceId };
+    } else {
       try {
         logger.info(`[Zepp-Life-Plugin] Token 不存在或已过期，重新登录: ${username}`);
-        const accessCode = await this.getAccessCode(username, password);
-        const tokenInfo = await this.getToken(username, accessCode, deviceId);
-        appToken = tokenInfo.appToken;
-        userId = tokenInfo.userId;
-        deviceId = tokenInfo.deviceId;
+        token = await this.login(username, password, deviceId);
       } catch (err) {
         return { success: false, error: `登录失败: ${err.message}`, newToken: null };
       }
     }
 
     try {
-      await this.changeStep(userId, appToken, step);
-      // 返回新 Token 供调用方缓存
-      return {
-        success: true,
-        steps: step,
-        newToken: { appToken, userId, tokenTime: tokenExpired ? Date.now() : tokenTime, deviceId }
-      };
+      await this.changeStep(token.userId, token.appToken, step);
+      return { success: true, steps: step, newToken: token };
     } catch (err) {
-      // Token 可能失效，尝试强制重新登录一次
-      if (!tokenExpired) {
-        logger.warn(`[Zepp-Life-Plugin] 使用缓存 Token 失败，尝试重新登录: ${err.message}`);
-        try {
-          const accessCode = await this.getAccessCode(username, password);
-          const tokenInfo = await this.getToken(username, accessCode, deviceId);
-          appToken = tokenInfo.appToken;
-          userId = tokenInfo.userId;
-          deviceId = tokenInfo.deviceId;
-          await this.changeStep(userId, appToken, step);
-          return {
-            success: true,
-            steps: step,
-            newToken: { appToken, userId, tokenTime: Date.now(), deviceId }
-          };
-        } catch (retryErr) {
-          return { success: false, error: retryErr.message, newToken: null };
-        }
+      if (!cacheValid) {
+        return { success: false, error: err.message, newToken: token };
       }
-      return { success: false, error: err.message, newToken: null };
+      // 缓存 Token 可能失效，强制重新登录重试一次
+      logger.warn(`[Zepp-Life-Plugin] 使用缓存 Token 失败，尝试重新登录: ${err.message}`);
+    }
+
+    let freshToken;
+    try {
+      freshToken = await this.login(username, password, deviceId);
+    } catch (err) {
+      return { success: false, error: `登录失败: ${err.message}`, newToken: null };
+    }
+    try {
+      await this.changeStep(freshToken.userId, freshToken.appToken, step);
+      return { success: true, steps: step, newToken: freshToken };
+    } catch (err) {
+      return { success: false, error: err.message, newToken: freshToken };
     }
   }
 }
