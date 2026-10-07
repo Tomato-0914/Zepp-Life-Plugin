@@ -23,6 +23,7 @@ class ZeppConfig {
     this.configPath = path.join(PLUGIN_ROOT, 'config', 'config', 'config.yaml');
     this.defaultPath = path.join(PLUGIN_ROOT, 'config', 'default_config', 'config.yaml');
     this.config = {};
+    this.mtime = 0;
     this.callbacks = [];
     this.init();
     this.watchConfig();
@@ -95,6 +96,7 @@ class ZeppConfig {
         const defaultFile = fs.readFileSync(this.defaultPath, 'utf8');
         const defaultConfig = YAML.parse(defaultFile) || {};
         this.config = lodash.merge({}, defaultConfig, userConfig);
+        this.mtime = fs.statSync(this.configPath).mtimeMs;
       }
     } catch (err) {
       logger.error(`[Zepp-Life-Plugin] 读取配置文件失败:`, err);
@@ -102,8 +104,19 @@ class ZeppConfig {
     return this.config;
   }
 
+  // 仅在配置文件被修改后才重新读取，避免每次取值都读写磁盘
+  reloadIfChanged() {
+    try {
+      if (fs.statSync(this.configPath).mtimeMs !== this.mtime) {
+        this.read();
+      }
+    } catch (err) {
+      // 配置文件不存在时沿用内存中的配置
+    }
+  }
+
   get(key) {
-    this.read();
+    this.reloadIfChanged();
     const realKey = key.startsWith('config.') ? key.replace('config.', '') : key;
     return lodash.get(this.config, realKey);
   }

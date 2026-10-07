@@ -27,22 +27,24 @@ export class UserStore {
     try {
       fs.mkdirSync(dataDir, { recursive: true });
       const existing = this.getUser(qq) || {};
+      // 传入的字段优先（允许传入 ''/0/[] 进行清空），未传入则沿用已有值
+      const pick = (key, fallback) => data[key] ?? existing[key] ?? fallback;
       const merged = {
         qq: String(qq),
         username: data.username || existing.username || '',
         password: data.password || existing.password || '',
-        autoStep: data.autoStep !== undefined ? data.autoStep : (existing.autoStep !== undefined ? existing.autoStep : false),
+        autoStep: pick('autoStep', false),
         time: data.time || existing.time || '06:00',
-        step: data.step !== undefined ? data.step : (existing.step !== undefined ? existing.step : 0),
-        pushGroups: data.pushGroups !== undefined ? data.pushGroups : (existing.pushGroups || []),
-        pushFriends: data.pushFriends !== undefined ? data.pushFriends : (existing.pushFriends || []),
-        lastStep: data.lastStep !== undefined ? data.lastStep : (existing.lastStep || 0),
-        lastTime: data.lastTime || existing.lastTime || '',
+        step: pick('step', 0),
+        pushGroups: pick('pushGroups', []),
+        pushFriends: pick('pushFriends', []),
+        lastStep: pick('lastStep', 0),
+        lastTime: pick('lastTime', ''),
         // 缓存登录Token，避免频繁登录触发 429
-        appToken: data.appToken !== undefined ? data.appToken : (existing.appToken || ''),
-        userId: data.userId !== undefined ? data.userId : (existing.userId || ''),
-        tokenTime: data.tokenTime !== undefined ? data.tokenTime : (existing.tokenTime || 0),
-        deviceId: data.deviceId !== undefined ? data.deviceId : (existing.deviceId || crypto.randomUUID().toUpperCase())
+        appToken: pick('appToken', ''),
+        userId: pick('userId', ''),
+        tokenTime: pick('tokenTime', 0),
+        deviceId: data.deviceId || existing.deviceId || crypto.randomUUID().toUpperCase()
       };
       fs.writeFileSync(filePath, YAML.stringify(merged), 'utf8');
       return true;

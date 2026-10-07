@@ -41,7 +41,9 @@
       </div>
     </div>
 
-    {{errorBlock}}
+    {{if reason}}
+    <div class="error-msg">{{reason}}</div>
+    {{/if}}
 
     <!-- Footer -->
     <div class="footer">

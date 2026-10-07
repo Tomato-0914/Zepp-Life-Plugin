@@ -20,6 +20,8 @@ const execCommand = (cmd, options = {}) => {
 };
 
 let updating = false;
+// Yunzai 每处理一条消息都会实例化一次插件，重启通知只需在首次加载时检查
+let restartChecked = false;
 
 export class ZeppUpdate extends plugin {
   constructor() {
@@ -36,7 +38,10 @@ export class ZeppUpdate extends plugin {
       ]
     });
 
-    this.checkRestartStatus();
+    if (!restartChecked) {
+      restartChecked = true;
+      this.checkRestartStatus();
+    }
   }
 
   async checkRestartStatus() {
@@ -69,11 +74,11 @@ export class ZeppUpdate extends plugin {
   async doUpdate(e) {
     if (!e.isMaster) {
       await e.reply('❎ 仅限我的主人可以进行版本升级喵~');
-      return false;
+      return true;
     }
     if (updating) {
       await e.reply('⏳ 已经在努力更新中了，请不要着急...');
-      return false;
+      return true;
     }
     updating = true;
     const messages = [];
@@ -88,7 +93,7 @@ export class ZeppUpdate extends plugin {
       if (ret.error) {
         messages.push(`❎ 更新失败：\n${ret.error.message || ret.stderr}`);
         await this.sendAll(messages, e);
-        return false;
+        return true;
       }
 
       const isUpToDate = /Already up|已经是最新/.test(ret.stdout);
@@ -96,7 +101,7 @@ export class ZeppUpdate extends plugin {
         const time = await this.getLastCommitTime();
         messages.push(`☁️ Zepp-Life-Plugin 已是最新版本\n最后更新：${time}`);
         await this.sendAll(messages, e);
-        return false;
+        return true;
       }
 
       const newCommit = await this.getCommitHash();
