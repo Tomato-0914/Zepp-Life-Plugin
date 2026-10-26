@@ -141,6 +141,8 @@ class ZeppConfig {
       doc.setIn(keys, value);
       fs.writeFileSync(this.configPath, doc.toString(), 'utf8');
       this.read();
+      // 部分文件系统（如 Docker 挂载卷）下 fs.watch 不一定触发，这里主动通知一次
+      this.notify();
       return true;
     } catch (err) {
       logger.error(`[Zepp-Life-Plugin] 保存配置文件失败:`, err);
@@ -159,13 +161,7 @@ class ZeppConfig {
               try {
                 this.read();
                 logger.mark(`[Zepp-Life-Plugin][配置文件已更新] 热重载 config.yaml`);
-                for (const cb of this.callbacks) {
-                  try {
-                    cb(this.config);
-                  } catch (err) {
-                    logger.error(`[Zepp-Life-Plugin][热更新监听回调异常]:`, err);
-                  }
-                }
+                this.notify();
               } catch (e) {
                 logger.error(`[Zepp-Life-Plugin][解析配置文件失败]:`, e);
               }
@@ -174,6 +170,16 @@ class ZeppConfig {
         });
       } catch (err) {
         logger.error(`[Zepp-Life-Plugin] 监听配置文件失败:`, err);
+      }
+    }
+  }
+
+  notify() {
+    for (const cb of this.callbacks) {
+      try {
+        cb(this.config);
+      } catch (err) {
+        logger.error(`[Zepp-Life-Plugin][热更新监听回调异常]:`, err);
       }
     }
   }

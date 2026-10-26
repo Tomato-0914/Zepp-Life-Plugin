@@ -40,6 +40,8 @@ export class UserStore {
         pushFriends: pick('pushFriends', []),
         lastStep: pick('lastStep', 0),
         lastTime: pick('lastTime', ''),
+        // 最近一次执行自动刷步的日期（北京时间 YYYY-MM-DD），用于保证每天只自动执行一次
+        lastAutoDate: pick('lastAutoDate', ''),
         // 缓存登录Token，避免频繁登录触发 429
         appToken: pick('appToken', ''),
         userId: pick('userId', ''),

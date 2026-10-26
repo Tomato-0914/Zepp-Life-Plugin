@@ -4,12 +4,12 @@ import path from 'path';
 import ZeppConfig, { getPluginRoot } from '../components/config.js';
 import { UserStore } from '../components/userStore.js';
 import ZeppAPI from '../components/zepp.js';
+import { schedule, getAutoCron } from '../components/cron.js';
 import {
   MAX_STEP,
   version,
   getTodayDateString,
   getTimeString,
-  getCurrentHHMM,
   normalizeTime,
   randomBetween,
   maskUsername,
@@ -149,6 +149,136 @@ async function modifyStepBase(e, user, step, isRandom = false) {
   return true;
 }
 
+// 是否到了该用户今日的自动刷步时间且今日尚未执行（巡检频率可配置，不再要求时间精确到分钟吻合）
+function isAutoStepDue(user, today, nowHHMM) {
+  if (user.autoStep !== true) return false;
+  const time = normalizeTime(user.time || '06:00');
+  // "HH:MM" 已补零，可直接按字符串比较
+  if (!time || time > nowHHMM) return false;
+  if (user.lastAutoDate) return user.lastAutoDate !== today;
+  // 兼容旧版本数据（无 lastAutoDate）：今日在设定时间之后已同步过，视为旧版本已在设定时间自动执行，避免升级当天重复刷步
+  return !(user.lastTime && user.lastTime.startsWith(today) && user.lastTime.slice(11, 16) >= time);
+}
+
+let autoStepRunning = false;
+
+// 定时巡检：为已到设定时间且今日尚未自动刷步的用户执行刷步
+async function autoStepCheck() {
+  // 上一轮尚未处理完（用户较多或接口较慢）时跳过本轮，防止同一用户被重复刷步
+  if (autoStepRunning) return;
+  autoStepRunning = true;
+  try {
+    // 日期与时分取自同一时刻，避免跨零点时两者不一致
+    const now = getTimeString();
+    const today = now.slice(0, 10);
+    const nowHHMM = now.slice(11, 16);
+    const dueUsers = UserStore.getAllUsers().filter(u => isAutoStepDue(u, today, nowHHMM));
+    if (dueUsers.length === 0) return;
+
+    logger.info(`[Zepp-Life-Plugin] 检测到有 ${dueUsers.length} 个用户已到自动刷步时间，开始执行任务...`);
+
+    for (const user of dueUsers) {
+      // 先记录今日已执行，失败也不在当天反复重试，避免频繁登录触发 429
+      UserStore.saveUser(user.qq, { lastAutoDate: today });
+      // 单个用户出错不影响其余用户
+      try {
+        await autoStepForUser(user);
+      } catch (err) {
+        logger.error(`[Zepp-Life-Plugin] 自动刷步异常: QQ ${user.qq} ->`, err);
+      }
+
+      // 每个用户之间随机延迟 3 - 10 秒防风控
+      const delay = Math.floor(Math.random() * 7000) + 3000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  } finally {
+    autoStepRunning = false;
+  }
+}
+
+async function autoStepForUser(user) {
+  let step = 0;
+  const userStep = String(user.step || '0').trim();
+  const hasCustomStep = userStep !== '' && userStep !== '0';
+  if (hasCustomStep) {
+    if (userStep.includes('-')) {
+      const parts = userStep.split('-');
+      const uMin = parseInt(parts[0], 10);
+      const uMax = parseInt(parts[1], 10);
+      if (!isNaN(uMin) && !isNaN(uMax)) {
+        step = randomBetween(uMin, uMax);
+      }
+    } else {
+      const fixedStep = parseInt(userStep, 10);
+      if (!isNaN(fixedStep) && fixedStep > 0) {
+        step = fixedStep;
+      }
+    }
+  }
+
+  if (step <= 0) {
+    step = getGlobalRandomStep();
+  }
+
+  if (step > MAX_STEP) step = MAX_STEP;
+
+  // 如果当日已刷过步数且大于要刷的步数，为防止同步倒退失败
+  const todayStr = getTodayDateString();
+  if (user.lastTime && user.lastTime.startsWith(todayStr) && step <= user.lastStep) {
+    const isFixed = hasCustomStep && !userStep.includes('-');
+    if (isFixed || user.lastStep >= MAX_STEP) {
+      // 固定步数（或今日已达上限）无法倒退，直接跳过此用户
+      logger.info(`[Zepp-Life-Plugin] 自动刷步跳过: QQ ${user.qq} 的步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}`);
+      await sendNotification(user, {
+        status: 'skip',
+        step,
+        reason: `设定步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}`
+      });
+      return;
+    }
+    // 随机步数或范围情况，自动生成一个略大的数以保证同步成功
+    step = Math.min(user.lastStep + Math.floor(Math.random() * 900) + 100, MAX_STEP);
+  }
+
+  logger.info(`[Zepp-Life-Plugin] 自动刷步：正在同步 QQ ${user.qq} -> ${step} 步`);
+
+  // 传入缓存 Token 避免每次重复登录触发 429 限流
+  const cachedToken = { appToken: user.appToken, userId: user.userId, tokenTime: user.tokenTime, deviceId: user.deviceId };
+  const res = await ZeppAPI.run(user.username, user.password, step, cachedToken);
+  const saveData = buildSaveData(res, step);
+  if (Object.keys(saveData).length > 0) {
+    UserStore.saveUser(user.qq, saveData);
+  }
+
+  if (res.success) {
+    logger.info(`[Zepp-Life-Plugin] 自动刷步成功: QQ ${user.qq} -> ${step} 步`);
+    await sendNotification(user, { status: 'success', step });
+  } else {
+    logger.error(`[Zepp-Life-Plugin] 自动刷步失败: QQ ${user.qq} -> 错误: ${res.error}`);
+    await sendNotification(user, { status: 'error', reason: res.error });
+  }
+}
+
+// 巡检任务由插件自行调度，以便在锅巴面板或配置文件修改 cron 后立即生效
+// 任务挂在 globalThis 上，防止插件被重复加载时产生多个定时任务
+const AUTO_JOB_KEY = Symbol.for('Zepp-Life-Plugin.autoStepJob');
+
+function scheduleAutoStepJob() {
+  if (!schedule) return;
+  const cron = getAutoCron();
+  const current = globalThis[AUTO_JOB_KEY];
+  if (current?.cron === cron) return;
+
+  current?.job?.cancel();
+  const job = schedule.scheduleJob(cron, () => {
+    autoStepCheck().catch(err => logger.error('[Zepp-Life-Plugin] 自动刷步巡检异常:', err));
+  });
+  globalThis[AUTO_JOB_KEY] = { cron, job };
+  logger.mark(`[Zepp-Life-Plugin] 自动刷步巡检任务已${current ? '更新' : '启动'}，cron: ${cron}`);
+}
+
+ZeppConfig.watch(scheduleAutoStepJob);
+
 export class ZeppApp extends plugin {
   constructor() {
     super({
@@ -172,12 +302,14 @@ export class ZeppApp extends plugin {
       ]
     });
 
-    // 每分钟执行一次的定时任务，检查是否有用户到达设定的自动刷步时间
-    this.task = {
-      name: 'Zepp-Life-自动刷步巡检任务',
-      cron: '0 * * * * ?',
-      fnc: () => this.autoStepCheck()
-    };
+    // 正常情况下巡检任务由 scheduleAutoStepJob 调度；缺少 node-schedule 时退回 Yunzai 内置定时任务（修改 cron 需重启）
+    if (!schedule) {
+      this.task = {
+        name: 'Zepp-Life-自动刷步巡检任务',
+        cron: getAutoCron(),
+        fnc: () => autoStepCheck()
+      };
+    }
   }
 
   // 1. 查看状态
@@ -294,94 +426,5 @@ export class ZeppApp extends plugin {
 
     await modifyStepBase(e, user, getGlobalRandomStep(), true);
     return true;
-  }
-
-  // 定时轮询检查逻辑
-  async autoStepCheck() {
-    const currentTimeStr = getCurrentHHMM();
-
-    const users = UserStore.getAllUsers();
-    // 匹配开启了自动刷步且设定的时间与当前分钟吻合的用户
-    const matchedUsers = users.filter(u => u.autoStep === true && normalizeTime(u.time || '06:00') === currentTimeStr);
-
-    if (matchedUsers.length === 0) return;
-
-    logger.info(`[Zepp-Life-Plugin] 检测到有 ${matchedUsers.length} 个用户的自动刷步时间为 ${currentTimeStr}，开始执行任务...`);
-
-    for (const user of matchedUsers) {
-      // 单个用户出错不影响其余用户
-      try {
-        await this.autoStepForUser(user);
-      } catch (err) {
-        logger.error(`[Zepp-Life-Plugin] 自动刷步异常: QQ ${user.qq} ->`, err);
-      }
-
-      // 每个用户之间随机延迟 3 - 10 秒防风控
-      const delay = Math.floor(Math.random() * 7000) + 3000;
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-
-  async autoStepForUser(user) {
-    let step = 0;
-    const userStep = String(user.step || '0').trim();
-    const hasCustomStep = userStep !== '' && userStep !== '0';
-    if (hasCustomStep) {
-      if (userStep.includes('-')) {
-        const parts = userStep.split('-');
-        const uMin = parseInt(parts[0], 10);
-        const uMax = parseInt(parts[1], 10);
-        if (!isNaN(uMin) && !isNaN(uMax)) {
-          step = randomBetween(uMin, uMax);
-        }
-      } else {
-        const fixedStep = parseInt(userStep, 10);
-        if (!isNaN(fixedStep) && fixedStep > 0) {
-          step = fixedStep;
-        }
-      }
-    }
-
-    if (step <= 0) {
-      step = getGlobalRandomStep();
-    }
-
-    if (step > MAX_STEP) step = MAX_STEP;
-
-    // 如果当日已刷过步数且大于要刷的步数，为防止同步倒退失败
-    const todayStr = getTodayDateString();
-    if (user.lastTime && user.lastTime.startsWith(todayStr) && step <= user.lastStep) {
-      const isFixed = hasCustomStep && !userStep.includes('-');
-      if (isFixed || user.lastStep >= MAX_STEP) {
-        // 固定步数（或今日已达上限）无法倒退，直接跳过此用户
-        logger.info(`[Zepp-Life-Plugin] 自动刷步跳过: QQ ${user.qq} 的步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}`);
-        await sendNotification(user, {
-          status: 'skip',
-          step,
-          reason: `设定步数 ${step} 小于或等于今日已刷步数 ${user.lastStep}`
-        });
-        return;
-      }
-      // 随机步数或范围情况，自动生成一个略大的数以保证同步成功
-      step = Math.min(user.lastStep + Math.floor(Math.random() * 900) + 100, MAX_STEP);
-    }
-
-    logger.info(`[Zepp-Life-Plugin] 自动刷步：正在同步 QQ ${user.qq} -> ${step} 步`);
-
-    // 传入缓存 Token 避免每次重复登录触发 429 限流
-    const cachedToken = { appToken: user.appToken, userId: user.userId, tokenTime: user.tokenTime, deviceId: user.deviceId };
-    const res = await ZeppAPI.run(user.username, user.password, step, cachedToken);
-    const saveData = buildSaveData(res, step);
-    if (Object.keys(saveData).length > 0) {
-      UserStore.saveUser(user.qq, saveData);
-    }
-
-    if (res.success) {
-      logger.info(`[Zepp-Life-Plugin] 自动刷步成功: QQ ${user.qq} -> ${step} 步`);
-      await sendNotification(user, { status: 'success', step });
-    } else {
-      logger.error(`[Zepp-Life-Plugin] 自动刷步失败: QQ ${user.qq} -> 错误: ${res.error}`);
-      await sendNotification(user, { status: 'error', reason: res.error });
-    }
   }
 }

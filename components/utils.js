@@ -24,12 +24,7 @@ export function getTodayDateString() {
 
 export function getTimeString() {
   const d = getChinaDate();
-  return `${getTodayDateString()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-export function getCurrentHHMM() {
-  const d = getChinaDate();
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 /**

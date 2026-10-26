@@ -46,5 +46,15 @@ export default [
       max: 300,
     },
     bottomHelpMessage: "控制所有生成图片的分辨率缩放比例，范围 50 至 300。100 为标准 1x，200 为 2x 高清（默认），300 为 3x 超清。",
+  },
+  {
+    field: "autoCron",
+    label: "自动刷步巡检频率",
+    component: "Input",
+    required: true,
+    componentProps: {
+      placeholder: "默认 0 * * * * ?（每分钟）",
+    },
+    bottomHelpMessage: "巡检任务的 cron 表达式（秒 分 时 日 月 周，按服务器本地时区），保存后立即生效，最高每分钟一次。每次巡检会为「已到设定时间且今日尚未自动刷步」的用户执行刷步，间隔越长实际执行越可能晚于设定时间。示例：0 */5 * * * ? 每 5 分钟；0 0 * * * ? 每小时整点。",
   }
 ];
