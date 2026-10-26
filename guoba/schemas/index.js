@@ -4,6 +4,7 @@ import configSchema from "./config.js";
 import usersSchema from "./users.js";
 import lodash from "lodash";
 import { normalizeTime, validateStepParam } from "../../components/utils.js";
+import { getAutoCron, validateCron, DEFAULT_AUTO_CRON } from "../../components/cron.js";
 
 export const schemas = [
   ...configSchema,
@@ -30,6 +31,7 @@ export function getConfigData() {
     useProxy: ZeppConfig.get('useProxy') === true,
     apiProxy: ZeppConfig.get('apiProxy') || '',
     dpi: ZeppConfig.get('dpi') !== undefined ? ZeppConfig.get('dpi') : 200,
+    autoCron: getAutoCron(),
     usersData: {
       users
     }
@@ -41,6 +43,15 @@ export function setConfigData(data, { Result }) {
     // 1. 先校验所有数据，任一项不合法则整体拒绝保存
     if (data.minStep !== undefined && data.maxStep !== undefined && Number(data.minStep) > Number(data.maxStep)) {
       return Result.error({}, "保存失败：随机最小步数不能大于随机最大步数");
+    }
+
+    let autoCron;
+    if (data.autoCron !== undefined) {
+      autoCron = String(data.autoCron ?? '').trim() || DEFAULT_AUTO_CRON;
+      const cronError = validateCron(autoCron);
+      if (cronError) {
+        return Result.error({}, `保存失败：自动刷步巡检频率「${autoCron}」无效，${cronError}`);
+      }
     }
 
     const users = lodash.get(data, 'usersData.users');
@@ -93,6 +104,10 @@ export function setConfigData(data, { Result }) {
     }
     if (data.dpi !== undefined) {
       ZeppConfig.set('dpi', Number(data.dpi));
+    }
+    if (autoCron !== undefined) {
+      // 写入后由配置监听自动重新调度巡检任务，无需重启
+      ZeppConfig.set('autoCron', autoCron);
     }
 
     // 3. 保存用户列表配置
